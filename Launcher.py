@@ -5,6 +5,7 @@ import keyboard
 import pystray
 from PIL import Image, ImageDraw
 import os
+import webbrowser
 
 # Obtém o diretório do script atual
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -52,13 +53,19 @@ class AlwaysOnTopApp:  # Define a classe AlwaysOnTopApp
 
         self.visible = False  # Inicializa a variável visible como False
 
+        self.commands = {
+            "open_link": self.open_link,
+            "open_file": self.open_file,
+            "expand": self.expand_app
+        }
+
     def center_window(self):
         self.root.update_idletasks()
         width = self.root.winfo_width()
         height = self.root.winfo_height()
-        x = (self.root.winfo_screenwidth() // 2) - (width // 2)
-        y = (self.root.winfo_screenheight() // 2) - (height // 2)
-        self.root.geometry(f"{width}x{height}+{x}+{y}")
+        x = (self.root.winfo_screenwidth() // 2) - (width // 2) # Calcula a posição x
+        y = (self.root.winfo_screenheight() // 2) - (height // 2)   # Calcula a posição y
+        self.root.geometry(f"{width}x{height}+{x}+{y}") # Define a posição da janela
 
     def toggle_window(self):
         if self.visible:
@@ -76,8 +83,66 @@ class AlwaysOnTopApp:  # Define a classe AlwaysOnTopApp
         self.visible = False
 
     def check_exit(self, event):
-        if self.entry.get().strip().lower() == "exit":
+        command = self.entry.get().strip().lower()
+        if command == "exit":
             self.cleanup()
+        else:
+            self.execute_command(command)
+
+    def execute_command(self, command):
+        if command in self.commands:
+            self.commands[command]()
+        else:
+            accepted_extensions = ["py", "txt"]
+            command_file = None
+            for ext in accepted_extensions:
+                potential_file = os.path.join(script_dir, "commands", f"{command}.{ext}")
+                if os.path.isfile(potential_file):
+                    command_file = potential_file
+                    break
+
+            if command_file:
+                try:
+                    with open(command_file, "r", encoding="utf-8") as file:
+                        exec(file.read().encode().decode('utf-8'))
+                except Exception as e:
+                    self.show_error(f"Error executing command '{command}': {e}")
+            else:
+                self.entry.delete(0, 'end')
+                self.entry.configure(placeholder_text=f"Comando '{command}' não encontrado", placeholder_text_color="red")
+                self.entry.bind("<Key>", self.reset_placeholder)
+
+    def reset_placeholder(self, event):
+        self.entry.configure(placeholder_text="", placeholder_text_color="white")
+        self.entry.unbind("<Key>")
+
+    def show_error(self, message):
+        error_window = customtkinter.CTkToplevel(self.root)
+        error_window.title("Error")
+        error_window.geometry("300x100")
+        error_window.attributes('-topmost', True)
+        error_label = customtkinter.CTkLabel(error_window, text=message, text_color="red")
+        error_label.pack(pady=20)
+        error_button = customtkinter.CTkButton(error_window, text="OK", command=error_window.destroy)
+        error_button.pack(pady=10)
+
+    def open_link(self, url="https://www.google.com"):
+        webbrowser.open(url)
+
+    def open_file(self, file_path="C:/path/to/your/file.txt"):
+        os.startfile(file_path)
+
+    def expand_app(self, labelText="Novo Valor:"):
+        new_label = customtkinter.CTkLabel(
+            self.content_frame, text=labelText, font=("Arial", 16), text_color="white"
+        )
+        new_label.grid(row=self.content_frame.grid_size()[1], column=0, pady=(10, 5), sticky="nsew")
+
+        new_entry = customtkinter.CTkEntry(
+            self.content_frame, placeholder_text="Digite o valor...", fg_color="#282a2e", text_color="white"
+        )
+        new_entry.grid(row=self.content_frame.grid_size()[1], column=0, padx=10, pady=(5, 10), sticky="ew")
+        new_entry.bind("<Return>", self.check_exit)
 
     def cleanup(self):
         self.root.destroy()
@@ -101,7 +166,7 @@ def tray_thread():
     global icon
     icon = pystray.Icon(
         "App", 
-        create_image(64, 64, "purple", "green"), 
+        create_image(64, 64, "purple", "lime"), 
         menu=pystray.Menu(
             pystray.MenuItem("Exit", lambda: on_exit())
         )
