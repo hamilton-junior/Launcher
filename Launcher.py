@@ -27,29 +27,7 @@ class AlwaysOnTopApp:  # Define a classe AlwaysOnTopApp
         self.center_window()  # Centraliza a janela na tela
         self.root.protocol("WM_DELETE_WINDOW", self.hide_window)  # Esconde a janela em vez de fechá-la
 
-        # Cria um frame de fundo com uma cor de borda
-        self.background_frame = tkinter.Frame(self.root, bg="#646464")  # Cor da borda
-        self.background_frame.pack(fill="both", expand=True, padx=1, pady=1)  # Adiciona uma borda fina
-
-        # Cria um frame de conteúdo com uma cor de fundo
-        self.content_frame = tkinter.Frame(self.background_frame, bg="#1d1f21")  # Cor de fundo
-        self.content_frame.pack(fill="both", expand=True, padx=0, pady=0)  # Preenche toda a janela
-
-        # Cria um layout de grade
-        self.content_frame.columnconfigure(0, weight=1)  # Expande horizontalmente
-        self.content_frame.rowconfigure(1, weight=1)  # Expande verticalmente
-        
-        # Cria um rótulo e uma entrada de texto
-        self.label = customtkinter.CTkLabel(  # Cria um rótulo personalizado
-            self.content_frame, text="\u00AF\\_(\u30C4)_/\u00AF", font=("Arial", 16), text_color="white"
-        )
-        self.label.grid(row=0, column=0, pady=(10, 5), sticky="nsew")  # Posiciona o rótulo na grade
-
-        self.entry = customtkinter.CTkEntry(  # Cria uma entrada de texto personalizada
-            self.content_frame, placeholder_text="Digite o comando...", fg_color="#282a2e", text_color="white"
-        )
-        self.entry.grid(row=1, column=0, padx=10, pady=(5, 10), sticky="ew")  # Posiciona a entrada de texto na grade
-        self.entry.bind("<Return>", self.check_exit)  # Associa o evento de pressionar a tecla Enter à função check_exit
+        self.setup_interface()  # Configura a interface inicial
 
         self.visible = False  # Inicializa a variável visible como False
 
@@ -66,6 +44,36 @@ class AlwaysOnTopApp:  # Define a classe AlwaysOnTopApp
         x = (self.root.winfo_screenwidth() // 2) - (width // 2) # Calcula a posição x
         y = (self.root.winfo_screenheight() // 2) - (height // 2)   # Calcula a posição y
         self.root.geometry(f"{width}x{height}+{x}+{y}") # Define a posição da janela
+
+    def setup_interface(self):
+        # Remove widgets existentes
+        for widget in self.root.winfo_children():
+            widget.destroy()
+
+        # Cria um frame de fundo com uma cor de borda
+        self.background_frame = tkinter.Frame(self.root, bg="#646464")  # Cor da borda
+        self.background_frame.pack(fill="both", expand=True, padx=1, pady=1)  # Adiciona uma borda fina
+
+        # Cria um frame de conteúdo com uma cor de fundo
+        self.content_frame = tkinter.Frame(self.background_frame, bg="#1d1f21")  # Cor de fundo
+        self.content_frame.pack(fill="both", expand=True, padx=0, pady=0)  # Preenche toda a janela
+
+        # Cria um layout de grade
+        self.content_frame.columnconfigure(0, weight=1)  # Expande horizontalmente
+        self.content_frame.rowconfigure(1, weight=1)  # Expande verticalmente
+
+        # Cria um rótulo e uma entrada de texto
+        self.label = customtkinter.CTkLabel(  # Cria um rótulo personalizado
+            self.content_frame, text="\u00AF\\_(\u30C4)_/\u00AF", font=("Arial", 16), text_color="white"
+        )
+        self.label.grid(row=0, column=0, pady=(10, 5), sticky="nsew")  # Posiciona o rótulo na grade
+
+        self.entry = customtkinter.CTkEntry(  # Cria uma entrada de texto personalizada
+            self.content_frame, placeholder_text="Digite o comando...", fg_color="#282a2e", text_color="white"
+        )
+        self.entry.grid(row=1, column=0, padx=10, pady=(5, 10), sticky="ew")  # Posiciona a entrada de texto na grade
+        self.entry.bind("<Return>", self.check_exit)  # Associa o evento de pressionar a tecla Enter à função check_exit
+        self.entry.focus_set()  # Define o foco no campo de entrada
 
     def toggle_window(self):
         if self.visible:
@@ -106,15 +114,18 @@ class AlwaysOnTopApp:  # Define a classe AlwaysOnTopApp
                     with open(command_file, "r", encoding="utf-8") as file:
                         exec(file.read().encode().decode('utf-8'))
                 except Exception as e:
-                    self.show_error(f"Error executing command '{command}': {e}")
+                    self.show_error(f"Error ao executar comando '{command}': {e}")
             else:
-                self.entry.delete(0, 'end')
-                self.entry.configure(placeholder_text=f"Comando '{command}' não encontrado", placeholder_text_color="red")
-                self.entry.bind("<Key>", self.reset_placeholder)
+                self.reset_input_placeholder(f"Comando '{command}' não encontrado")
 
-    def reset_placeholder(self, event):
-        self.entry.configure(placeholder_text="", placeholder_text_color="white")
-        self.entry.unbind("<Key>")
+    def reset_input_placeholder(self, error_message):
+        self.entry.delete(0, 'end')
+        self.entry.configure(placeholder_text=error_message, placeholder_text_color="red")
+        self.entry.bind("<Key>", self.reset_input_handler, add="+")
+
+    def reset_input_handler(self, event):
+        self.setup_interface()  # Reinicia a interface
+        self.entry.insert(0, event.char)  # Insere o caractere pressionado
 
     def show_error(self, message):
         error_window = customtkinter.CTkToplevel(self.root)
