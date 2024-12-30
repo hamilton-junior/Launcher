@@ -12,18 +12,20 @@ import ctypes  # Importa a biblioteca ctypes para interagir com o sistema operac
 script_dir = os.path.dirname(os.path.abspath(__file__))
 
 # Constrói o caminho para o arquivo de tema
-theme_path = os.path.join(script_dir, "data", "theme.json")
+theme_path = os.path.join(script_dir, "assets", "theme.json")
 
 # Define o tema padrão do customtkinter usando o caminho do arquivo de tema
 customtkinter.set_default_color_theme(theme_path)  # Temas: "blue" (padrão), "green", "dark-blue", "sweetkind"
 
 # Define o diretório de comandos e ícones
 commands_dir = os.path.join(script_dir, "commands")
-icon_path = os.path.join(script_dir, "data", "icon.png")
-tray_icon_path = os.path.join(script_dir, "data", "trayicon.png")
+icon_path = os.path.join(script_dir, "assets/icons", "icon.png")
+tray_icon_path = os.path.join(script_dir, "assets/icons", "trayicon.png")
 
 # Define a geometria padrão da janela, para ser usada ao redefinir a janela
-defaultGeometry = "240x100"
+defaultWidth = 240
+defaultHeight = 100
+defaultGeometry = f"{defaultWidth}x{defaultHeight}" #Define a geometria padrão da janela em uma única variável, para facilitar o uso do tamanho final
 
 class AlwaysOnTopApp:
     """
@@ -51,6 +53,7 @@ class AlwaysOnTopApp:
                 "dir": self.open_script_dir
             }
             self.hideWindowAfterCommand = True
+            self.entry_count = 0  # Initialize entry count
         except Exception as e:
             self.show_error(f"Erro ao inicializar a aplicação: {e}")
 
@@ -88,17 +91,23 @@ class AlwaysOnTopApp:
             self.label = customtkinter.CTkLabel(
                 self.content_frame, text="\u00AF\\_(\u30C4)_/\u00AF", font=("Arial", 16), text_color="white"
             )
-            self.label.grid(row=0, column=0, pady=(10, 5), sticky="nsew")
+            self.label.grid(row=0, column=0, pady=(10, 5), sticky="ew")
+
+            self.entry_frame = tkinter.Frame(self.content_frame, bg="#1d1f21", height=defaultHeight)
+            self.entry_frame.grid(row=1, column=0, padx=10, pady=(5, 10), sticky="nsew")
+            self.entry_frame.columnconfigure(0, weight=1)
 
             self.entry = customtkinter.CTkEntry(
-                self.content_frame, placeholder_text="Digite o comando...", fg_color="#282a2e", text_color="white"
+                self.entry_frame, placeholder_text="Digite o comando...", fg_color="#282a2e", text_color="white"
             )
-            self.entry.grid(row=1, column=0, padx=10, pady=(5, 10), sticky="ew")
+            self.entry.grid(row=0, column=0, sticky="nsew")
             self.entry.bind("<Return>", self.check_exit)
             self.entry.focus_set()
 
+            self.entry_count = 1  # Initialize entry count
+
             self.root.update_idletasks()
-            self.root.geometry(f"{self.root.winfo_width()}x{self.root.winfo_height()}")
+            self.root.geometry(f"{defaultWidth}x{defaultHeight}")
         except Exception as e:
             self.show_error(f"Erro ao configurar a interface: {e}")
 
@@ -152,7 +161,7 @@ class AlwaysOnTopApp:
                 if self.execute_command(command):
                     self.entry.delete(0, 'end')
                     self.entry.configure(placeholder_text="Digite o comando...")
-                    print(f"hideWindowAfterCommand in check_exit: {self.hideWindowAfterCommand}")
+                    print(f"--- hideWindowAfterCommand in check_exit: {self.hideWindowAfterCommand}")
                     if self.hideWindowAfterCommand:
                         self.hide_window()
                     self.hideWindowAfterCommand = True
@@ -174,14 +183,22 @@ class AlwaysOnTopApp:
         Executa o comando especificado.
         """
         try:
-            print(f"Initial hideWindowAfterCommand: {self.hideWindowAfterCommand}")
+            print(f"--- Initial hideWindowAfterCommand: {self.hideWindowAfterCommand}")
 
             if command in self.commands:
                 self.commands[command]()
                 self.hideWindowAfterCommand = True
                 return True
             elif command == "in":
-                self.expand_app(labelText="Informe o CNPJ", command=lambda value: self.open_link_with_value_and_reset(value, "http://intranet.lzt.com.br/cliente/pesquisar/REPLACEME"))
+                self.create_new_entry(
+                    "CNPJ",
+                    labelColor="cyan",
+                    command=lambda value: self.open_link_with_value_and_reset(
+                        value,
+                        "https://intranet.lzt.com.br/cliente/pesquisar/REPLACEME"
+                    )
+                )
+                self.adjust_window_size()
                 self.hideWindowAfterCommand = True
                 return True
             else:
@@ -189,7 +206,7 @@ class AlwaysOnTopApp:
                 command_file = None
                 for ext in accepted_extensions:
                     potential_file = os.path.join(commands_dir, f"{command}.{ext}")
-                    print(f"Checking for file: {potential_file}")
+                    print(f"--- Checking for file: {potential_file}")
                     if os.path.isfile(potential_file):
                         command_file = potential_file
                         break
@@ -198,10 +215,8 @@ class AlwaysOnTopApp:
                     try:
                         with open(command_file, "r", encoding="utf-8") as file:
                             exec(file.read().encode().decode('utf-8'))
-                        print(f"hideWindowAfterCommand after exec: {self.hideWindowAfterCommand}")
-                        self.hideWindowAfterCommand = True
-                        print(f"hideWindowAfterCommand after exec and set to true: {self.hideWindowAfterCommand}")
-
+                        print(f"--- hideWindowAfterCommand after exec: {self.hideWindowAfterCommand}")
+                        self.setup_interface()
                         return True
                     except Exception as e:
                         self.show_error(f"Erro ao executar comando '{command}': {e}")
@@ -241,7 +256,7 @@ class AlwaysOnTopApp:
         try:
             error_window = customtkinter.CTkToplevel(self.root)
             error_window.title("Error")
-            error_window.geometry("300x100")
+            error_window.geometry((f"{width}x{height}"))
             error_window.attributes('-topmost', True)
             error_label = customtkinter.CTkLabel(error_window, text=message, text_color="red")
             error_label.pack(pady=20)
@@ -249,7 +264,7 @@ class AlwaysOnTopApp:
             error_button.pack(pady=10)
             self.root.update_idletasks()
         except Exception as e:
-            print(f"Erro ao mostrar a mensagem de erro: {e}")
+            print(f"--- --- Erro ao mostrar a mensagem de erro: {e}")
 
     def open_link(self, url="https://www.google.com"):
         """
@@ -283,34 +298,48 @@ class AlwaysOnTopApp:
         except Exception as e:
             self.show_error(f"Erro ao abrir o arquivo: {e}")
 
-    def expand_app(self, labelText="Novo Valor:", command=None):
+    def create_new_entry(self, labelText, labelColor="white", command=None):
         """
-        Expande a aplicação adicionando novos campos de entrada.
+        Cria uma nova entrada com um rótulo especificado.
         """
         try:
+            # Create a new label for the entry
             new_label = customtkinter.CTkLabel(
-                self.content_frame, text=labelText, font=("Arial", 16), text_color="white"
+                self.entry_frame, text=labelText, font=("Arial", 16), text_color=labelColor
             )
-            new_label.grid(row=self.content_frame.grid_size()[1], column=0, pady=(10, 5), sticky="nsew")
+            new_label.grid(row=self.entry_count * 2, column=0, pady=(10, 5), sticky="ew")
 
-            entry_name = f"new_entry_{labelText.replace(' ', '_').lower()}"
-            setattr(self, entry_name, customtkinter.CTkEntry(
-                self.content_frame, placeholder_text="Digite o valor...", fg_color="#282a2e", text_color="white"
-            ))
-            new_entry = getattr(self, entry_name)
+            # Create a new entry field
+            new_entry = customtkinter.CTkEntry(
+                self.entry_frame, placeholder_text="Digite o valor...", fg_color="#282a2e", text_color="white"
+            )
             if command:
-                new_entry.bind("<Return>", lambda event: command(new_entry.get().strip()))
+                new_entry.bind("<Return>", lambda Event: command(new_entry.get().strip()))
             else:
                 new_entry.bind("<Return>", self.check_exit)
-            new_entry.grid(row=self.content_frame.grid_size()[1], column=0, padx=10, pady=(5, 10), sticky="ew")
+            new_entry.grid(row=self.entry_count * 2 + 1, column=0, padx=10, pady=(5, 10), sticky="ew")
 
-            self.root.update_idletasks()
-            self.root.geometry(f"{self.root.winfo_width()}x{self.root.winfo_height() + 50}")
+            self.entry_count += 1  # Increment entry count
+            self.adjust_window_size()
 
-            self.entry.grid(row=1, column=0, padx=10, pady=(5, 10), sticky="ew")
+            self.entry_frame.rowconfigure(self.entry_count * 2, weight=1)  # Ensure new row is configured
+            self.entry_frame.rowconfigure(self.entry_count * 2 + 1, weight=1)  # Ensure new row is configured
+
             self.root.update_idletasks()
         except Exception as e:
-            self.show_error(f"Erro ao expandir a aplicação: {e}")
+            self.show_error(f"Erro ao criar nova entrada: {e}")
+
+    def adjust_window_size(self):
+        """
+        Ajusta o tamanho da janela para garantir que todos os campos estejam visíveis.
+        """
+        try:
+            self.root.update_idletasks()
+            width = defaultWidth
+            height = defaultHeight + (self.entry_count * 35)  # Adjust height based on entry count
+            self.root.geometry(f"{width}x{height}")
+        except Exception as e:
+            self.show_error(f"Erro ao ajustar o tamanho da janela: {e}")
 
     def open_script_dir(self):
         """
@@ -329,7 +358,7 @@ class AlwaysOnTopApp:
             self.root.destroy()
             icon.stop()
         except Exception as e:
-            print(f"Erro ao limpar a aplicação: {e}")
+            print(f"--- Erro ao limpar a aplicação: {e}")
 
     def list_commands(self):
         """
@@ -420,7 +449,7 @@ def create_image(width, height, color1, color2):
         )
         return image
     except Exception as e:
-        print(f"Erro ao criar a imagem: {e}")
+        print(f"--- Erro ao criar a imagem: {e}")
 
 def on_exit():
     """
@@ -430,7 +459,7 @@ def on_exit():
         if 'app' in globals():
             app.cleanup()
     except Exception as e:
-        print(f"Erro ao sair da aplicação: {e}")
+        print(f"--- Erro ao sair da aplicação: {e}")
 
 def tray_thread():
     """
@@ -448,7 +477,7 @@ def tray_thread():
         )
         icon.run()
     except Exception as e:
-        print(f"Erro ao iniciar a thread da bandeja: {e}")
+        print(f"--- Erro ao iniciar a thread da bandeja: {e}")
 
 if __name__ == "__main__":
     # Inicializa a aplicação e configura o ícone da bandeja do sistema.
@@ -462,4 +491,4 @@ if __name__ == "__main__":
 
         app.root.mainloop()
     except Exception as e:
-        print(f"Erro ao iniciar a aplicação: {e}")
+        print(f"--- Erro ao iniciar a aplicação: {e}")
