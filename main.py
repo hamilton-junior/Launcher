@@ -104,7 +104,7 @@ class AlwaysOnTopApp:
             self.entry.bind("<Return>", self.check_exit)
             self.entry.focus_set()
 
-            self.entry_count = 1  # Initialize entry count
+            self.entry_count = 0  # Initialize/Reset entry count
 
             self.root.update_idletasks()
             self.root.geometry(f"{defaultWidth}x{defaultHeight}")
@@ -199,7 +199,8 @@ class AlwaysOnTopApp:
                     )
                 )
                 self.adjust_window_size()
-                self.hideWindowAfterCommand = True
+                self.hideWindowAfterCommand = False
+                self.root.update_idletasks()
                 return True
             else:
                 accepted_extensions = ["py", "txt"]
@@ -307,7 +308,7 @@ class AlwaysOnTopApp:
             new_label = customtkinter.CTkLabel(
                 self.entry_frame, text=labelText, font=("Arial", 16), text_color=labelColor
             )
-            new_label.grid(row=self.entry_count * 2, column=0, pady=(10, 5), sticky="ew")
+            new_label.grid(row=self.entry_count * 2 + 1, column=0, pady=(10, 5), sticky="ew")
 
             # Create a new entry field
             new_entry = customtkinter.CTkEntry(
@@ -317,15 +318,13 @@ class AlwaysOnTopApp:
                 new_entry.bind("<Return>", lambda Event: command(new_entry.get().strip()))
             else:
                 new_entry.bind("<Return>", self.check_exit)
-            new_entry.grid(row=self.entry_count * 2 + 1, column=0, padx=10, pady=(5, 10), sticky="ew")
+            new_entry.grid(row=self.entry_count * 2 + 2, column=0, padx=10, pady=(5, 10), sticky="ew")
 
             self.entry_count += 1  # Increment entry count
             self.adjust_window_size()
-
-            self.entry_frame.rowconfigure(self.entry_count * 2, weight=1)  # Ensure new row is configured
-            self.entry_frame.rowconfigure(self.entry_count * 2 + 1, weight=1)  # Ensure new row is configured
-
+            self.entry_frame.rowconfigure(self.entry_count * 2 + 2, weight=1)  # Ensure new row is configured
             self.root.update_idletasks()
+            new_entry.focus_force()
         except Exception as e:
             self.show_error(f"Erro ao criar nova entrada: {e}")
 
@@ -336,7 +335,7 @@ class AlwaysOnTopApp:
         try:
             self.root.update_idletasks()
             width = defaultWidth
-            height = defaultHeight + (self.entry_count * 35)  # Adjust height based on entry count
+            height = defaultHeight + (self.entry_count * 70)  # Adjust height based on entry count
             self.root.geometry(f"{width}x{height}")
         except Exception as e:
             self.show_error(f"Erro ao ajustar o tamanho da janela: {e}")
