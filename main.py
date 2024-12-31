@@ -9,12 +9,6 @@ import keyboard  # Importa a biblioteca keyboard para capturar eventos de teclad
 import pystray  # Importa a biblioteca pystray para criar ícones na bandeja do sistema
 from PIL import Image, ImageDraw  # Importa a biblioteca PIL para manipulação de imagens
 
-# Configura o logger
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(name)s/%(funcName)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
 
 # Obtém o diretório do script atual
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -24,6 +18,24 @@ theme_path = os.path.join(script_dir, "assets", "theme.json")
 
 # Define o tema padrão do customtkinter usando o caminho do arquivo de tema
 customtkinter.set_default_color_theme(theme_path)  # Temas: "blue" (padrão), "green", "dark-blue", "sweetkind"
+
+# Constrói o caminho para o diretório de logs
+log_dir = os.path.join(script_dir, "log")
+
+# Cria o diretório de logs se não existir
+os.makedirs(log_dir, exist_ok=True)
+
+# Configura o logger
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - [%(levelname)s] %(filename)s:%(lineno)d (%(name)s/%(funcName)s) --> %(message)s',
+    datefmt='%Y-%m-%d @ %H:%M:%S',
+    handlers=[
+        logging.FileHandler(f"{log_dir}/main.log", encoding="utf-8"),
+        logging.StreamHandler()
+    ]
+)
+
 
 # Define o diretório de comandos e ícones
 commands_dir = os.path.join(script_dir, "commands")
