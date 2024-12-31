@@ -44,6 +44,7 @@ class AlwaysOnTopApp:
         Inicializa a aplicação, configurando a janela principal e a interface.
         """
         try:
+            logging.info("Inicializando a aplicação...")
             self.root = customtkinter.CTk()
             self.root.geometry(defaultGeometry)
             self.root.title("Launcher")
@@ -70,6 +71,7 @@ class AlwaysOnTopApp:
         Centraliza a janela na tela.
         """
         try:
+            logging.info("Centralizando a janela...")
             self.root.update_idletasks()
             width = self.root.winfo_width()
             height = self.root.winfo_height()
@@ -84,6 +86,7 @@ class AlwaysOnTopApp:
         Configura a interface inicial da aplicação.
         """
         try:
+            logging.info("Configurando a interface...")
             for widget in self.root.winfo_children():
                 widget.destroy()
 
@@ -124,6 +127,7 @@ class AlwaysOnTopApp:
         Alterna a visibilidade da janela.
         """
         try:
+            logging.info("Alternando a visibilidade da janela...")
             if self.visible:
                 self.hide_window()
             else:
@@ -136,6 +140,7 @@ class AlwaysOnTopApp:
         Mostra a janela e a centraliza na tela.
         """
         try:
+            logging.info("Mostrando a janela...")
             self.center_window()
             self.root.deiconify()
             self.visible = True
@@ -148,6 +153,7 @@ class AlwaysOnTopApp:
         Oculta a janela.
         """
         try:
+            logging.info("Escondendo a janela...")
             self.root.withdraw()
             self.visible = False
         except Exception as e:
@@ -159,6 +165,7 @@ class AlwaysOnTopApp:
         """
         try:
             command = self.entry.get().strip().lower()
+            logging.info(f"Comando recebido: {command}")
             if command == "exit":
                 self.cleanup()
             elif command == "?":
@@ -181,6 +188,7 @@ class AlwaysOnTopApp:
         Abre um link no navegador substituindo um valor na URL base.
         """
         try:
+            logging.info(f"Abrindo link com valor: {value}")
             url = base_url.replace("REPLACEME", value)
             webbrowser.open(url)
         except Exception as e:
@@ -194,10 +202,12 @@ class AlwaysOnTopApp:
             logging.info(f"Initial hideWindowAfterCommand: {self.hideWindowAfterCommand}")
 
             if command in self.commands:
+                logging.info(f"Executando comando interno: {command}")
                 self.commands[command]()
                 self.hideWindowAfterCommand = True
                 return True
             elif command == "in":
+                logging.info("Criando nova entrada para comando 'in'")
                 self.create_new_entry(
                     "CNPJ",
                     labelColor="cyan",
@@ -222,6 +232,7 @@ class AlwaysOnTopApp:
 
                 if command_file:
                     try:
+                        logging.info(f"Executando arquivo de comando: {command_file}")
                         with open(command_file, "r", encoding="utf-8") as file:
                             exec(file.read().encode().decode('utf-8'))
                         logging.info(f"hideWindowAfterCommand after exec: {self.hideWindowAfterCommand}")
@@ -237,11 +248,12 @@ class AlwaysOnTopApp:
             self.show_error(f"Erro ao executar o comando: {e}")
             return False
 
-    def reset_input_placeholder(self, message,color="red"):
+    def reset_input_placeholder(self, message, color="red"):
         """
         Reseta o placeholder do campo de entrada com uma mensagem.
         """
         try:
+            logging.info(f"Resetando placeholder do campo de entrada: {message}")
             self.entry.delete(0, 'end')
             self.entry.configure(placeholder_text=message, placeholder_text_color=color)
             self.entry.bind("<Key>", self.reset_input_handler, add="+")
@@ -253,6 +265,7 @@ class AlwaysOnTopApp:
         Manipulador para resetar o campo de entrada.
         """
         try:
+            logging.info("Resetando campo de entrada...")
             self.setup_interface()
             self.entry.insert(0, event.char)
         except Exception as e:
@@ -263,6 +276,7 @@ class AlwaysOnTopApp:
         Mostra uma mensagem de erro em uma nova janela.
         """
         try:
+            logging.error(message)
             error_window = customtkinter.CTkToplevel(self.root)
             error_window.title("Error")
             error_window.geometry((f"{width}x{height}"))
@@ -280,6 +294,7 @@ class AlwaysOnTopApp:
         Abre o link especificado no navegador padrão.
         """
         try:
+            logging.info(f"Abrindo link: {url}")
             webbrowser.open(url)
         except Exception as e:
             self.show_error(f"Erro ao abrir o link: {e}")
@@ -289,6 +304,7 @@ class AlwaysOnTopApp:
         Abre um link no navegador substituindo um valor na URL base e reseta a interface.
         """
         try:
+            logging.info(f"Abrindo link com valor e resetando: {value}")
             self.open_link_with_value(value, base_url)
             self.setup_interface()
             self.root.geometry(defaultGeometry)
@@ -303,6 +319,7 @@ class AlwaysOnTopApp:
         Abre o arquivo especificado.
         """
         try:
+            logging.info(f"Abrindo arquivo: {file_path}")
             os.startfile(file_path)
         except Exception as e:
             self.show_error(f"Erro ao abrir o arquivo: {e}")
@@ -312,6 +329,7 @@ class AlwaysOnTopApp:
         Cria uma nova entrada com um rótulo especificado.
         """
         try:
+            logging.info(f"Criando nova entrada: {labelText}")
             # Create a new label for the entry
             new_label = customtkinter.CTkLabel(
                 self.entry_frame, text=labelText, font=("Arial", 16), text_color=labelColor
@@ -341,6 +359,7 @@ class AlwaysOnTopApp:
         Ajusta o tamanho da janela para garantir que todos os campos estejam visíveis.
         """
         try:
+            logging.info("Ajustando tamanho da janela...")
             self.root.update_idletasks()
             width = defaultWidth
             height = defaultHeight + (self.entry_count * 70)  # Adjust height based on entry count
@@ -353,6 +372,7 @@ class AlwaysOnTopApp:
         Abre o diretório do script.
         """
         try:
+            logging.info("Abrindo diretório do script...")
             os.startfile(script_dir)
         except Exception as e:
             self.show_error(f"Erro ao abrir o diretório do script: {e}")
@@ -362,6 +382,7 @@ class AlwaysOnTopApp:
         Limpa e encerra a aplicação.
         """
         try:
+            logging.info("Limpando e encerrando a aplicação...")
             self.root.destroy()
             icon.stop()
         except Exception as e:
@@ -372,6 +393,7 @@ class AlwaysOnTopApp:
         Lista os comandos disponíveis no diretório de comandos.
         """
         try:
+            logging.info("Listando comandos disponíveis...")
             commands_list = []
             for file in os.listdir(commands_dir):
                 if file.endswith(".py") or file.endswith(".txt"):
@@ -388,6 +410,7 @@ class AlwaysOnTopApp:
         Extrai a docstring do arquivo de comando especificado.
         """
         try:
+            logging.info(f"Obtendo docstring do comando: {file_path}")
             with open(file_path, "r", encoding="utf-8") as file:
                 lines = file.readlines()
                 docstring_started = False
@@ -412,6 +435,7 @@ class AlwaysOnTopApp:
         Mostra um tooltip com a lista de comandos disponíveis.
         """
         try:
+            logging.info("Mostrando tooltip de comandos disponíveis...")
             commands = self.list_commands()
             tooltip_text = "Comandos disponíveis:\n\n" + "\n".join(commands)
             self.show_windows_tooltip(tooltip_text)
@@ -423,6 +447,7 @@ class AlwaysOnTopApp:
         Mostra um tooltip na janela.
         """
         try:
+            logging.info("Mostrando tooltip na janela...")
             self.tooltip = tkinter.Toplevel(self.root)
             self.tooltip.wm_overrideredirect(True)
             self.tooltip.geometry(f"+0+0")
@@ -437,6 +462,7 @@ class AlwaysOnTopApp:
         Esconde o tooltip.
         """
         try:
+            logging.info("Escondendo tooltip...")
             if hasattr(self, 'tooltip'):
                 self.tooltip.destroy()
                 del self.tooltip
@@ -448,6 +474,7 @@ def create_image(width, height, color1, color2):
     Cria uma imagem para o ícone da bandeja do sistema. (fallback)
     """
     try:
+        logging.info("Criando imagem para ícone da bandeja...")
         image = Image.new('RGB', (width, height), color1)
         dc = ImageDraw.Draw(image)
         dc.rectangle(
@@ -463,6 +490,7 @@ def on_exit():
     Função chamada ao sair da aplicação.
     """
     try:
+        logging.info("Saindo da aplicação...")
         if 'app' in globals():
             app.cleanup()
     except Exception as e:
@@ -473,6 +501,7 @@ def tray_thread():
     Thread para criar o ícone da bandeja do sistema.
     """
     try:
+        logging.info("Iniciando thread da bandeja do sistema...")
         global icon
         icon_image = Image.open(tray_icon_path)
         icon = pystray.Icon(
@@ -489,6 +518,7 @@ def tray_thread():
 if __name__ == "__main__":
     # Inicializa a aplicação e configura o ícone da bandeja do sistema.
     try:
+        logging.info("Iniciando a aplicação...")
         app = AlwaysOnTopApp()
 
         tray = threading.Thread(target=tray_thread, daemon=True)
