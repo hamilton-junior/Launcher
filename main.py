@@ -57,11 +57,13 @@ class AlwaysOnTopApp:
             self.setup_interface()
 
             self.visible = False
+            logging.info(f"Estado inicial de visible: {self.visible}")
 
             self.commands = {
                 "dir": self.open_script_dir
             }
             self.hideWindowAfterCommand = True
+            logging.info(f"Estado inicial de hideWindowAfterCommand: {self.hideWindowAfterCommand}")
             self.entry_count = 0  # Initialize entry count
         except Exception as e:
             self.show_error(f"Erro ao inicializar a aplicação: {e}")
@@ -132,6 +134,8 @@ class AlwaysOnTopApp:
                 self.hide_window()
             else:
                 self.show_window()
+            self.visible = not self.visible
+            logging.info(f"Estado de visible alternado: {self.visible}")
         except Exception as e:
             self.show_error(f"Erro ao alternar a visibilidade da janela: {e}")
 
@@ -144,6 +148,7 @@ class AlwaysOnTopApp:
             self.center_window()
             self.root.deiconify()
             self.visible = True
+            logging.info(f"Mostrar janela, estado de visible: {self.visible}")
             self.entry.focus_force()
         except Exception as e:
             self.show_error(f"Erro ao mostrar a janela: {e}")
@@ -156,6 +161,7 @@ class AlwaysOnTopApp:
             logging.info("Escondendo a janela...")
             self.root.withdraw()
             self.visible = False
+            logging.info(f"Esconder janela, estado de visible: {self.visible}")
         except Exception as e:
             self.show_error(f"Erro ao esconder a janela: {e}")
 
@@ -176,7 +182,7 @@ class AlwaysOnTopApp:
                 if self.execute_command(command):
                     self.entry.delete(0, 'end')
                     self.entry.configure(placeholder_text="Digite o comando...")
-                    logging.info(f"hideWindowAfterCommand in check_exit: {self.hideWindowAfterCommand}")
+                    logging.info(f"hideWindowAfterCommand em check_exit: {self.hideWindowAfterCommand}")
                     if self.hideWindowAfterCommand:
                         self.hide_window()
                     self.hideWindowAfterCommand = True
@@ -199,12 +205,13 @@ class AlwaysOnTopApp:
         Executa o comando especificado.
         """
         try:
-            logging.info(f"Initial hideWindowAfterCommand: {self.hideWindowAfterCommand}")
+            logging.info(f"Estado inicial de hideWindowAfterCommand: {self.hideWindowAfterCommand}")
 
             if command in self.commands:
                 logging.info(f"Executando comando interno: {command}")
                 self.commands[command]()
                 self.hideWindowAfterCommand = True
+                logging.info(f"Definir estado de hideWindowAfterCommand: {self.hideWindowAfterCommand}")
                 return True
             elif command == "in":
                 logging.info("Criando nova entrada para comando 'in'")
@@ -218,6 +225,7 @@ class AlwaysOnTopApp:
                 )
                 self.adjust_window_size()
                 self.hideWindowAfterCommand = False
+                logging.info(f"Definir estado de hideWindowAfterCommand: {self.hideWindowAfterCommand}")
                 self.root.update_idletasks()
                 return True
             else:
@@ -225,7 +233,7 @@ class AlwaysOnTopApp:
                 command_file = None
                 for ext in accepted_extensions:
                     potential_file = os.path.join(commands_dir, f"{command}.{ext}")
-                    logging.info(f"Checking for file: {potential_file}")
+                    logging.info(f"Verificando arquivo: {potential_file}")
                     if os.path.isfile(potential_file):
                         command_file = potential_file
                         break
@@ -235,7 +243,7 @@ class AlwaysOnTopApp:
                         logging.info(f"Executando arquivo de comando: {command_file}")
                         with open(command_file, "r", encoding="utf-8") as file:
                             exec(file.read().encode().decode('utf-8'))
-                        logging.info(f"hideWindowAfterCommand after exec: {self.hideWindowAfterCommand}")
+                        logging.info(f"hideWindowAfterCommand após exec: {self.hideWindowAfterCommand}")
                         self.setup_interface()
                         return True
                     except Exception as e:
@@ -311,6 +319,7 @@ class AlwaysOnTopApp:
             self.center_window()
             if self.hideWindowAfterCommand:
                 self.hide_window()
+            logging.info(f"hideWindowAfterCommand em open_link_with_value_and_reset: {self.hideWindowAfterCommand}")
         except Exception as e:
             self.show_error(f"Erro ao abrir o link e resetar a interface: {e}")
 
@@ -385,6 +394,7 @@ class AlwaysOnTopApp:
             logging.info("Limpando e encerrando a aplicação...")
             self.root.destroy()
             icon.stop()
+            logging.info(f"Limpeza da aplicação, estado de visible: {self.visible}")
         except Exception as e:
             logging.error(f"Erro ao limpar a aplicação: {e}")
 
@@ -439,6 +449,8 @@ class AlwaysOnTopApp:
             commands = self.list_commands()
             tooltip_text = "Comandos disponíveis:\n\n" + "\n".join(commands)
             self.show_windows_tooltip(tooltip_text)
+            self.entry.bind("<Key>", self.hide_tooltip, add="+")
+            logging.info(f"Estado de visibilidade do tooltip: {hasattr(self, 'tooltip')}")
         except Exception as e:
             self.show_error(f"Erro ao mostrar comandos: {e}")
 
@@ -466,6 +478,7 @@ class AlwaysOnTopApp:
             if hasattr(self, 'tooltip'):
                 self.tooltip.destroy()
                 del self.tooltip
+            logging.info(f"Estado de visibilidade do tooltip: {hasattr(self, 'tooltip')}")
         except Exception as e:
             self.show_error(f"Erro ao esconder tooltip: {e}")
 
