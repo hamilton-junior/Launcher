@@ -70,7 +70,7 @@ class AlwaysOnTopApp:
 
             self.setup_interface()
 
-            self.visible = False
+            self.visible = True
             logging.info(f"Estado inicial de visible: {self.visible}")
 
             self.commands = {
@@ -148,7 +148,6 @@ class AlwaysOnTopApp:
                 self.hide_window()
             else:
                 self.show_window()
-            self.visible = not self.visible
             logging.info(f"Estado de visible alternado: {self.visible}")
         except Exception as e:
             self.show_error(f"Erro ao alternar a visibilidade da janela: {e}")
@@ -449,7 +448,7 @@ class AlwaysOnTopApp:
                             docstring = line.split('"""')[1].strip()
                     elif docstring_started:
                         docstring += " " + line.strip()
-                return docstring if docstring else "Sem descrição"
+                return docstring if docstring else "(Sem descrição)"
         except Exception as e:
             self.show_error(f"Erro ao obter a docstring: {e}")
             return "Erro ao obter descrição"
