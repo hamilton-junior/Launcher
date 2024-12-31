@@ -2,6 +2,7 @@ import os  # Importa a biblioteca os para interações com o sistema operacional
 import logging  # Importa a biblioteca logging para logs apropriados
 import threading  # Importa a biblioteca threading para trabalhar com threads
 import webbrowser  # Importa a biblioteca webbrowser para abrir links no navegador
+import sys # Importa a biblioteca sys para obter informações sobre o sistema
 
 import tkinter  # Importa a biblioteca tkinter para criar interfaces gráficas
 import customtkinter  # Importa a biblioteca customtkinter para widgets personalizados
@@ -9,9 +10,11 @@ import keyboard  # Importa a biblioteca keyboard para capturar eventos de teclad
 import pystray  # Importa a biblioteca pystray para criar ícones na bandeja do sistema
 from PIL import Image, ImageDraw  # Importa a biblioteca PIL para manipulação de imagens
 
-
-# Obtém o diretório do script atual
-script_dir = os.path.dirname(os.path.abspath(__file__))
+# Obtém o diretório do script atual ou o diretório temporário do PyInstaller
+if getattr(sys, 'frozen', False):
+    script_dir = sys._MEIPASS
+else:
+    script_dir = os.path.dirname(os.path.abspath(__file__))
 
 # Constrói o caminho para o arquivo de tema
 theme_path = os.path.join(script_dir, "assets", "theme.json")
@@ -35,7 +38,6 @@ logging.basicConfig(
         logging.StreamHandler()
     ]
 )
-
 
 # Define o diretório de comandos e ícones
 commands_dir = os.path.join(script_dir, "commands")
