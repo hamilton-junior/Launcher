@@ -1,12 +1,20 @@
-import tkinter  # Importa a biblioteca tkinter para criar interfaces gráficas
+import os  # Importa a biblioteca os para interações com o sistema operacional
+import logging  # Importa a biblioteca logging para logs apropriados
 import threading  # Importa a biblioteca threading para trabalhar com threads
+import webbrowser  # Importa a biblioteca webbrowser para abrir links no navegador
+
+import tkinter  # Importa a biblioteca tkinter para criar interfaces gráficas
 import customtkinter  # Importa a biblioteca customtkinter para widgets personalizados
 import keyboard  # Importa a biblioteca keyboard para capturar eventos de teclado
 import pystray  # Importa a biblioteca pystray para criar ícones na bandeja do sistema
 from PIL import Image, ImageDraw  # Importa a biblioteca PIL para manipulação de imagens
-import os  # Importa a biblioteca os para interações com o sistema operacional
-import webbrowser  # Importa a biblioteca webbrowser para abrir links no navegador
-import ctypes  # Importa a biblioteca ctypes para interagir com o sistema operacional
+
+# Configura o logger
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(name)s/%(funcName)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 
 # Obtém o diretório do script atual
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -161,7 +169,7 @@ class AlwaysOnTopApp:
                 if self.execute_command(command):
                     self.entry.delete(0, 'end')
                     self.entry.configure(placeholder_text="Digite o comando...")
-                    print(f"--- hideWindowAfterCommand in check_exit: {self.hideWindowAfterCommand}")
+                    logging.info(f"hideWindowAfterCommand in check_exit: {self.hideWindowAfterCommand}")
                     if self.hideWindowAfterCommand:
                         self.hide_window()
                     self.hideWindowAfterCommand = True
@@ -183,7 +191,7 @@ class AlwaysOnTopApp:
         Executa o comando especificado.
         """
         try:
-            print(f"--- Initial hideWindowAfterCommand: {self.hideWindowAfterCommand}")
+            logging.info(f"Initial hideWindowAfterCommand: {self.hideWindowAfterCommand}")
 
             if command in self.commands:
                 self.commands[command]()
@@ -207,7 +215,7 @@ class AlwaysOnTopApp:
                 command_file = None
                 for ext in accepted_extensions:
                     potential_file = os.path.join(commands_dir, f"{command}.{ext}")
-                    print(f"--- Checking for file: {potential_file}")
+                    logging.info(f"Checking for file: {potential_file}")
                     if os.path.isfile(potential_file):
                         command_file = potential_file
                         break
@@ -216,7 +224,7 @@ class AlwaysOnTopApp:
                     try:
                         with open(command_file, "r", encoding="utf-8") as file:
                             exec(file.read().encode().decode('utf-8'))
-                        print(f"--- hideWindowAfterCommand after exec: {self.hideWindowAfterCommand}")
+                        logging.info(f"hideWindowAfterCommand after exec: {self.hideWindowAfterCommand}")
                         self.setup_interface()
                         return True
                     except Exception as e:
@@ -265,7 +273,7 @@ class AlwaysOnTopApp:
             error_button.pack(pady=10)
             self.root.update_idletasks()
         except Exception as e:
-            print(f"--- --- Erro ao mostrar a mensagem de erro: {e}")
+            logging.error(f"Erro ao mostrar a mensagem de erro: {e}")
 
     def open_link(self, url="https://www.google.com"):
         """
@@ -357,7 +365,7 @@ class AlwaysOnTopApp:
             self.root.destroy()
             icon.stop()
         except Exception as e:
-            print(f"--- Erro ao limpar a aplicação: {e}")
+            logging.error(f"Erro ao limpar a aplicação: {e}")
 
     def list_commands(self):
         """
@@ -448,7 +456,7 @@ def create_image(width, height, color1, color2):
         )
         return image
     except Exception as e:
-        print(f"--- Erro ao criar a imagem: {e}")
+        logging.error(f"Erro ao criar a imagem: {e}")
 
 def on_exit():
     """
@@ -458,7 +466,7 @@ def on_exit():
         if 'app' in globals():
             app.cleanup()
     except Exception as e:
-        print(f"--- Erro ao sair da aplicação: {e}")
+        logging.error(f"Erro ao sair da aplicação: {e}")
 
 def tray_thread():
     """
@@ -476,7 +484,7 @@ def tray_thread():
         )
         icon.run()
     except Exception as e:
-        print(f"--- Erro ao iniciar a thread da bandeja: {e}")
+        logging.error(f"Erro ao iniciar a thread da bandeja: {e}")
 
 if __name__ == "__main__":
     # Inicializa a aplicação e configura o ícone da bandeja do sistema.
@@ -490,4 +498,4 @@ if __name__ == "__main__":
 
         app.root.mainloop()
     except Exception as e:
-        print(f"--- Erro ao iniciar a aplicação: {e}")
+        logging.error(f"Erro ao iniciar a aplicação: {e}")
