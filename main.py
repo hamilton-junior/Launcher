@@ -19,6 +19,10 @@ else:
 # Constrói o caminho para o arquivo de tema
 theme_path = os.path.join(script_dir, "assets", "theme.json")
 
+# Constrói o caminho para a pasta de temas
+themes_dir = os.path.join(script_dir, "assets", "themes")
+
+
 # Define o tema padrão do customtkinter usando o caminho do arquivo de tema
 customtkinter.set_default_color_theme(theme_path)  # Temas: "blue" (padrão), "green", "dark-blue", "sweetkind"
 
@@ -410,6 +414,63 @@ class AlwaysOnTopApp:
             logging.info(f"Limpeza da aplicação, estado de visible: {self.visible}")
         except Exception as e:
             logging.error(f"Erro ao limpar a aplicação: {e}")
+            
+
+    def listar_temas(self):
+        """
+        Lista os temas disponíveis no diretório de temas.
+        """
+        try:
+            logging.info("Listando temas disponíveis...")
+            themes_list = []
+            for file in os.listdir(themes_dir):
+                if file.endswith(".json"):
+                    theme_name = file.split('.')[0]
+                    themes_list.append(theme_name)
+                    logging.info(f"Temas disponíveis: {themes_list}")
+            return themes_list
+        except Exception as e:
+            self.show_error(f"Erro ao listar temas: {e}")
+            return []
+        
+    def interface_escolha_tema(self):
+        """
+        Configura a interface para escolha de tema.
+        """
+        try:
+            logging.info("Configurando a interface para escolha de tema...")
+            janela_tema = customtkinter.CTk()
+            for temas in themes_list:
+                logging.info(f"Configurando botão de tema: {temas}") 
+                botao_tema = customtkinter.CTkButton(janela_tema, text=temas, command=lambda: set_theme(self, temas))
+                botao_tema.pack()
+                qtd_temas = len(themes_list)
+            janela_tema.geometry(f"{qtd_temas} * 50, 100")
+            janela_tema_frame = customtkinter.CTkFrame(janela_tema, width=janela_tema.get(width=200), height=janela_tema.get(height=100))
+            janela_tema_frame.place(x=10, y=10)
+            janela_tema_frame.pack(fill="both", expand=True, padx=1, pady=1)
+            themes_list = self.listar_temas()
+            janela_tema.title("Escolha de Tema")
+            janela_tema.attributes('-topmost', True)
+            janela_tema.overrideredirect(True)
+            janela_tema.mainloop()
+        except Exception as e:
+            self.show_error(f"Erro ao configurar a interface de escolha de tema: {e}")
+            logging.error(f"Erro ao configurar a interface de escolha de tema: {e}")
+            
+
+        def set_theme(self, theme_name):
+            logging.info(f"Definindo o tema: {theme_name}")
+            try:
+                theme_path = os.path.join(themes_dir, f"{theme_name}.json")
+                customtkinter.set_default_color_theme(theme_path)
+                logging.info(f"Tema definido: {theme_name}")
+                janela_tema.destroy()
+            except Exception as e:
+                self.show_error(f"Erro ao definir o tema: {e}")
+                logging.error(f"Erro ao definir o tema: {e}")
+                
+
 
     def list_commands(self):
         """
