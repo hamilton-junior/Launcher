@@ -1,1 +1,0 @@
-self.interface_escolha_tema()

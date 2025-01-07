@@ -6,6 +6,7 @@ import sys # Importa a biblioteca sys para obter informações sobre o sistema
 
 import tkinter  # Importa a biblioteca tkinter para criar interfaces gráficas
 import customtkinter  # Importa a biblioteca customtkinter para widgets personalizados
+from customtkinter.windows.ctk_toplevel import ThemeManager  # Importado para gerenciar temas de cores
 import keyboard  # Importa a biblioteca keyboard para capturar eventos de teclado
 import pystray  # Importa a biblioteca pystray para criar ícones na bandeja do sistema
 from PIL import Image, ImageDraw  # Importa a biblioteca PIL para manipulação de imagens
@@ -19,9 +20,8 @@ else:
 # Constrói o caminho para o arquivo de tema
 theme_path = os.path.join(script_dir, "assets", "theme.json")
 
-# Constrói o caminho para a pasta de temas
-themes_dir = os.path.join(script_dir, "assets", "themes")
-
+# Constrói o caminho para o arquivo de tema
+theme_dir = os.path.join(script_dir, "assets", "themes")
 
 # Define o tema padrão do customtkinter usando o caminho do arquivo de tema
 customtkinter.set_default_color_theme(theme_path)  # Temas: "blue" (padrão), "green", "dark-blue", "sweetkind"
@@ -34,7 +34,7 @@ os.makedirs(log_dir, exist_ok=True)
 
 # Configura o logger
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.WARNING,
     format='%(asctime)s - [%(levelname)s] %(filename)s:%(lineno)d (%(name)s/%(funcName)s) --> %(message)s',
     datefmt='%Y-%m-%d @ %H:%M:%S',
     handlers=[
@@ -52,6 +52,7 @@ tray_icon_path = os.path.join(script_dir, "assets/icons", "trayicon.png")
 defaultWidth = 240
 defaultHeight = 100
 defaultGeometry = f"{defaultWidth}x{defaultHeight}" #Define a geometria padrão da janela em uma única variável, para facilitar o uso do tamanho final
+
 
 class AlwaysOnTopApp:
     """
@@ -206,7 +207,7 @@ class AlwaysOnTopApp:
         except Exception as e:
             self.show_error(f"Erro ao verificar o comando de saída: {e}")
 
-    def open_link_with_value(self, value, base_url):
+    def open_link_with_value(self, base_url, value):
         """
         Abre um link no navegador substituindo um valor na URL base.
         """
@@ -234,12 +235,15 @@ class AlwaysOnTopApp:
                 logging.info("Criando nova entrada para comando 'in'")
                 self.create_new_entry(
                     "CNPJ",
-                    labelColor="cyan",
-                    command=lambda value: self.open_link_with_value_and_reset(
-                        value,
-                        "https://intranet.lzt.com.br/cliente/pesquisar/REPLACEME"
+                    "cyan",
+                    lambda value: self.open_link_with_value_and_reset(
+                        "https://intranet.lzt.com.br/cliente/pesquisar/REPLACEME",
+                        value
                     )
                 )
+            elif command in {"tema", "temas", "theme", "themes"}:
+                self.criar_interface_escolha_tema()
+                
                 self.adjust_window_size()
                 self.hideWindowAfterCommand = False
                 logging.info(f"Definir estado de hideWindowAfterCommand: {self.hideWindowAfterCommand}")
@@ -273,6 +277,92 @@ class AlwaysOnTopApp:
             self.show_error(f"Erro ao executar o comando: {e}")
             return False
 
+    def criar_interface_escolha_tema(self):
+        """
+        Constrói a interface para escolha de tema.
+        """
+        try:
+            logging.info("Construindo interface de escolha de tema...")
+            escolha_tema_main_window = customtkinter.CTkToplevel(self.root)
+            escolha_tema_main_window.overrideredirect(True)
+            escolha_tema_frame = customtkinter.CTkFrame(escolha_tema_main_window)
+            escolha_tema_frame.pack(fill="both", expand=True, padx=10, pady=10)
+            bt_tema_padrao = customtkinter.CTkButton(
+                escolha_tema_frame,
+                text="Tema Padrão",
+                command=lambda: customtkinter.set_default_color_theme(theme_path)
+                )
+            temas_disponiveis = self.get_available_themes()
+            logging.info(f"Temas disponíveis: {temas_disponiveis}")
+            if temas_disponiveis:
+                escolha_tema_label = customtkinter.CTkLabel(
+                    escolha_tema_frame,
+                    text="Escolha um tema:",
+                )
+                escolha_tema_label.pack(pady=10)
+                bt_tema_padrao.pack(pady=10)
+                logging.info("Iniciando ciclo de construção de botões de tema...")
+                for theme in temas_disponiveis:
+                    theme_button = customtkinter.CTkButton(
+                        escolha_tema_frame,
+                        text=str.title(theme),
+                        command=lambda t=theme: self.aplicar_novo_tema(t)
+                    )
+                logging.info(f"Botão de tema construído: {theme}")
+                theme_button.pack(pady=5)
+            else:
+                logging.info("Nenhum tema disponível.")
+                logging.info("Criando label de tema indisponível...")
+                escolha_tema_label = customtkinter.CTkLabel(
+                escolha_tema_frame,
+                text="Nenhum tema personalizado disponível.",
+                )
+                bt_tema_padrao.pack(pady=10)
+
+            logging.info("Ciclo de construção de botões de tema concluído.")
+            escolha_tema_main_window.title("Escolha de Tema")
+        except Exception as e:
+            self.show_error(f"Erro ao construir a interface de escolha de tema: {e}")
+            logging.error(f"Erro ao construir a interface de escolha de tema: {e}")
+        finally:
+            botao_sair_tema = customtkinter.CTkButton(
+            escolha_tema_frame,
+            text="Ok",
+            command=escolha_tema_main_window.destroy
+            )
+            botao_sair_tema.pack(pady=(50,0))
+            self.root.update_idletasks()
+            
+            
+    def get_available_themes(self):
+        """
+        Retorna a lista de temas disponíveis.
+        """
+        try:
+            logging.info("Obtendo temas disponíveis...")
+            themes = ["Padrão"]
+            for file in os.listdir(theme_dir):
+                if file.endswith(".json"):
+                    themes.append(file.split('.')[0])
+            return themes
+        except Exception as e:
+            logging.error(f"Erro ao obter temas disponíveis: {e}")
+            self.show_error(f"Erro ao obter temas disponíveis: {e}")
+            return []
+
+    def aplicar_novo_tema(self, tema):
+        """
+        Aplica um novo tema à aplicação.
+        """
+        try:
+            self.tema_atual = tema
+            logging.info(f"Aplicando novo tema: {tema}")
+            customtkinter.set_default_color_theme(f"{theme_dir}/{tema}.json")
+            self.root.update_idletasks()
+            logging.info(f"Tema atual: {ThemeManager._currently_loaded_theme}")
+        except Exception as e:
+            self.show_error(f"Erro ao aplicar o novo tema: {e}")
+
     def reset_input_placeholder(self, message, color="red"):
         """
         Reseta o placeholder do campo de entrada com uma mensagem.
@@ -295,6 +385,7 @@ class AlwaysOnTopApp:
             self.entry.insert(0, event.char)
         except Exception as e:
             self.show_error(f"Erro ao resetar o campo de entrada: {e}")
+
 
     def show_error(self, message):
         """
@@ -324,13 +415,13 @@ class AlwaysOnTopApp:
         except Exception as e:
             self.show_error(f"Erro ao abrir o link: {e}")
 
-    def open_link_with_value_and_reset(self, value, base_url):
+    def open_link_with_value_and_reset(self, base_url, value):
         """
         Abre um link no navegador substituindo um valor na URL base e reseta a interface.
         """
         try:
             logging.info(f"Abrindo link com valor e resetando: {value}")
-            self.open_link_with_value(value, base_url)
+            self.open_link_with_value(base_url, value)
             self.setup_interface()
             self.root.geometry(defaultGeometry)
             self.center_window()
@@ -414,63 +505,6 @@ class AlwaysOnTopApp:
             logging.info(f"Limpeza da aplicação, estado de visible: {self.visible}")
         except Exception as e:
             logging.error(f"Erro ao limpar a aplicação: {e}")
-            
-
-    def listar_temas(self):
-        """
-        Lista os temas disponíveis no diretório de temas.
-        """
-        try:
-            logging.info("Listando temas disponíveis...")
-            themes_list = []
-            for file in os.listdir(themes_dir):
-                if file.endswith(".json"):
-                    theme_name = file.split('.')[0]
-                    themes_list.append(theme_name)
-                    logging.info(f"Temas disponíveis: {themes_list}")
-            return themes_list
-        except Exception as e:
-            self.show_error(f"Erro ao listar temas: {e}")
-            return []
-        
-    def interface_escolha_tema(self):
-        """
-        Configura a interface para escolha de tema.
-        """
-        try:
-            logging.info("Configurando a interface para escolha de tema...")
-            janela_tema = customtkinter.CTk()
-            for temas in themes_list:
-                logging.info(f"Configurando botão de tema: {temas}") 
-                botao_tema = customtkinter.CTkButton(janela_tema, text=temas, command=lambda: set_theme(self, temas))
-                botao_tema.pack()
-                qtd_temas = len(themes_list)
-            janela_tema.geometry(f"{qtd_temas} * 50, 100")
-            janela_tema_frame = customtkinter.CTkFrame(janela_tema, width=janela_tema.get(width=200), height=janela_tema.get(height=100))
-            janela_tema_frame.place(x=10, y=10)
-            janela_tema_frame.pack(fill="both", expand=True, padx=1, pady=1)
-            themes_list = self.listar_temas()
-            janela_tema.title("Escolha de Tema")
-            janela_tema.attributes('-topmost', True)
-            janela_tema.overrideredirect(True)
-            janela_tema.mainloop()
-        except Exception as e:
-            self.show_error(f"Erro ao configurar a interface de escolha de tema: {e}")
-            logging.error(f"Erro ao configurar a interface de escolha de tema: {e}")
-            
-
-        def set_theme(self, theme_name):
-            logging.info(f"Definindo o tema: {theme_name}")
-            try:
-                theme_path = os.path.join(themes_dir, f"{theme_name}.json")
-                customtkinter.set_default_color_theme(theme_path)
-                logging.info(f"Tema definido: {theme_name}")
-                janela_tema.destroy()
-            except Exception as e:
-                self.show_error(f"Erro ao definir o tema: {e}")
-                logging.error(f"Erro ao definir o tema: {e}")
-                
-
 
     def list_commands(self):
         """
@@ -509,8 +543,9 @@ class AlwaysOnTopApp:
                             docstring = line.split('"""')[1].strip()
                     elif docstring_started:
                         docstring += " " + line.strip()
-                return docstring if docstring else "(Sem descrição)"
+                return docstring if docstring else "[Sem descrição]"
         except Exception as e:
+            logging.error(f"Erro ao obter a docstring dos comandos: {e}")
             self.show_error(f"Erro ao obter a docstring: {e}")
             return "Erro ao obter descrição"
 
