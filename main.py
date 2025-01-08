@@ -287,11 +287,20 @@ class AlwaysOnTopApp:
             escolha_tema_main_window.overrideredirect(True)
             escolha_tema_frame = customtkinter.CTkFrame(escolha_tema_main_window)
             escolha_tema_frame.pack(fill="both", expand=True, padx=10, pady=10)
+            logging.debug(f"winfo_geometry -> {escolha_tema_main_window.winfo_geometry}")
             bt_tema_padrao = customtkinter.CTkButton(
                 escolha_tema_frame,
-                text="Tema Padrão",
-                command=lambda: customtkinter.set_default_color_theme(theme_path)
+                text="Padrão",
+                        command=lambda: self.aplicar_novo_tema("theme")
                 )
+            temas_padroes = ["Blue","Dark Blue","Green","Sweetkind"]
+            for tema_padrao in temas_padroes:
+                bt_temas_padrao = customtkinter.CTkButton(
+                escolha_tema_frame,
+                text="f{tema_padrao}",
+                command=lambda: self.aplicar_novo_tema("theme")
+                )
+                
             temas_disponiveis = self.get_available_themes()
             logging.info(f"Temas disponíveis: {temas_disponiveis}")
             if temas_disponiveis:
@@ -299,17 +308,17 @@ class AlwaysOnTopApp:
                     escolha_tema_frame,
                     text="Escolha um tema:",
                 )
-                escolha_tema_label.pack(pady=10)
-                bt_tema_padrao.pack(pady=10)
+                escolha_tema_label.pack(pady=(0,0))
+                bt_tema_padrao.pack(pady=(0,25))
                 logging.info("Iniciando ciclo de construção de botões de tema...")
                 for theme in temas_disponiveis:
                     theme_button = customtkinter.CTkButton(
                         escolha_tema_frame,
                         text=str.title(theme),
                         command=lambda t=theme: self.aplicar_novo_tema(t)
-                    )
+                    )                    
+                    theme_button.pack(pady=5)
                 logging.info(f"Botão de tema construído: {theme}")
-                theme_button.pack(pady=5)
             else:
                 logging.info("Nenhum tema disponível.")
                 logging.info("Criando label de tema indisponível...")
@@ -340,10 +349,11 @@ class AlwaysOnTopApp:
         """
         try:
             logging.info("Obtendo temas disponíveis...")
-            themes = ["Padrão"]
+            themes = []
             for file in os.listdir(theme_dir):
                 if file.endswith(".json"):
                     themes.append(file.split('.')[0])
+                    
             return themes
         except Exception as e:
             logging.error(f"Erro ao obter temas disponíveis: {e}")
@@ -355,10 +365,21 @@ class AlwaysOnTopApp:
         Aplica um novo tema à aplicação.
         """
         try:
+            
             self.tema_atual = tema
             logging.info(f"Aplicando novo tema: {tema}")
-            customtkinter.set_default_color_theme(f"{theme_dir}/{tema}.json")
+            if tema == "theme":
+                customtkinter.set_default_color_theme(theme_path)
+            elif tema in ["Blue","Dark Blue","Green","Sweetkind"]:
+                customtkinter.set_default_color_theme(tema)
+            else:
+                customtkinter.set_default_color_theme(f"{theme_dir}/{tema}.json")
+                
             self.root.update_idletasks()
+            
+            self.setup_interface()
+            self.criar_interface_escolha_tema()
+
             logging.info(f"Tema atual: {ThemeManager._currently_loaded_theme}")
         except Exception as e:
             self.show_error(f"Erro ao aplicar o novo tema: {e}")
