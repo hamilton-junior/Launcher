@@ -24,7 +24,7 @@ theme_path = os.path.join(script_dir, "assets", "theme.json")
 theme_dir = os.path.join(script_dir, "assets", "themes")
 
 # Define o tema padrão do customtkinter usando o caminho do arquivo de tema
-customtkinter.set_default_color_theme(theme_path)  # Temas: "blue" (padrão), "green", "dark-blue", "sweetkind"
+customtkinter.set_default_color_theme(theme_path)  # Temas: "blue" (padrão), "green", "dark-blue", ("sweetkind?"")
 
 # Constrói o caminho para o diretório de logs
 log_dir = os.path.join(script_dir, "log")
@@ -58,6 +58,23 @@ class AlwaysOnTopApp:
     """
     Classe para criar uma aplicação que permanece sempre no topo.
     """
+    def show_error(self, message):
+        """
+        Mostra uma mensagem de erro em uma nova janela.
+        """
+        try:
+            logging.error(message)
+            error_window = customtkinter.CTkToplevel(self.root)
+            error_window.title("Error")
+            error_window.geometry((f"{width}x{height}"))
+            error_window.attributes('-topmost', True)
+            error_label = customtkinter.CTkLabel(error_window, text=message, text_color="red")
+            error_label.pack(pady=20)
+            error_button = customtkinter.CTkButton(error_window, text="OK", command=error_window.destroy)
+            error_button.pack(pady=10)
+            self.root.update_idletasks()
+        except Exception as e:
+            logging.error(f"Erro ao mostrar a mensagem de erro: {e}")
     def __init__(self):
         """
         Inicializa a aplicação, configurando a janela principal e a interface.
@@ -287,60 +304,58 @@ class AlwaysOnTopApp:
             escolha_tema_main_window.overrideredirect(True)
             escolha_tema_frame = customtkinter.CTkFrame(escolha_tema_main_window)
             escolha_tema_frame.pack(fill="both", expand=True, padx=10, pady=10)
-            logging.debug(f"winfo_geometry -> {escolha_tema_main_window.winfo_geometry}")
+
+            # Botão de Tema Padrão
             bt_tema_padrao = customtkinter.CTkButton(
                 escolha_tema_frame,
                 text="Padrão",
-                        command=lambda: self.aplicar_novo_tema("theme")
-                )
-            temas_padroes = ["Blue","Dark Blue","Green","Sweetkind"]
+                command=lambda: self.aplicar_novo_tema("theme")
+            )
+            bt_tema_padrao.pack(pady=(10, 10), padx=(10, 10))
+
+            # Botões de Temas Padrão
+            temas_padroes = ["Blue", "Dark-Blue", "Green"]
             for tema_padrao in temas_padroes:
                 bt_temas_padrao = customtkinter.CTkButton(
-                escolha_tema_frame,
-                text="f{tema_padrao}",
-                command=lambda: self.aplicar_novo_tema("theme")
-                )
-                
-            temas_disponiveis = self.get_available_themes()
-            logging.info(f"Temas disponíveis: {temas_disponiveis}")
-            if temas_disponiveis:
-                escolha_tema_label = customtkinter.CTkLabel(
                     escolha_tema_frame,
-                    text="Escolha um tema:",
+                    text=tema_padrao,
+                    command=lambda t=tema_padrao: self.aplicar_novo_tema(t.lower())
                 )
-                escolha_tema_label.pack(pady=(0,0))
-                bt_tema_padrao.pack(pady=(0,25))
-                logging.info("Iniciando ciclo de construção de botões de tema...")
+                bt_temas_padrao.pack(pady=(0, 5))
+
+            # Botões de Temas Personalizados
+            temas_disponiveis = self.get_available_themes()
+            if temas_disponiveis:
+                temas_personalizados_label = customtkinter.CTkLabel(
+                    escolha_tema_frame, text="Temas Personalizados:", font=("Arial", 12)
+                )
+                temas_personalizados_label.pack(pady=(15, 5))
+
                 for theme in temas_disponiveis:
                     theme_button = customtkinter.CTkButton(
                         escolha_tema_frame,
-                        text=str.title(theme),
+                        text=theme.title(),
                         command=lambda t=theme: self.aplicar_novo_tema(t)
-                    )                    
-                    theme_button.pack(pady=5)
-                logging.info(f"Botão de tema construído: {theme}")
+                    )
+                    theme_button.pack(pady=(0, 5))
             else:
-                logging.info("Nenhum tema disponível.")
-                logging.info("Criando label de tema indisponível...")
-                escolha_tema_label = customtkinter.CTkLabel(
-                escolha_tema_frame,
-                text="Nenhum tema personalizado disponível.",
+                no_themes_label = customtkinter.CTkLabel(
+                    escolha_tema_frame, text="Nenhum tema personalizado disponível."
                 )
-                bt_tema_padrao.pack(pady=10)
+                no_themes_label.pack(pady=(15, 5))
 
-            logging.info("Ciclo de construção de botões de tema concluído.")
+            # Botão para sair
+            botao_sair_tema = customtkinter.CTkButton(
+                escolha_tema_frame,
+                text="Ok",
+                command=escolha_tema_main_window.destroy
+            )
+            botao_sair_tema.pack(pady=(20, 0))
+
             escolha_tema_main_window.title("Escolha de Tema")
         except Exception as e:
             self.show_error(f"Erro ao construir a interface de escolha de tema: {e}")
-            logging.error(f"Erro ao construir a interface de escolha de tema: {e}")
-        finally:
-            botao_sair_tema = customtkinter.CTkButton(
-            escolha_tema_frame,
-            text="Ok",
-            command=escolha_tema_main_window.destroy
-            )
-            botao_sair_tema.pack(pady=(50,0))
-            self.root.update_idletasks()
+
             
             
     def get_available_themes(self):
@@ -370,7 +385,7 @@ class AlwaysOnTopApp:
             logging.info(f"Aplicando novo tema: {tema}")
             if tema == "theme":
                 customtkinter.set_default_color_theme(theme_path)
-            elif tema in ["Blue","Dark Blue","Green","Sweetkind"]:
+            elif tema in {"blue", "green", "dark-blue"}:
                 customtkinter.set_default_color_theme(tema)
             else:
                 customtkinter.set_default_color_theme(f"{theme_dir}/{tema}.json")
@@ -408,23 +423,6 @@ class AlwaysOnTopApp:
             self.show_error(f"Erro ao resetar o campo de entrada: {e}")
 
 
-    def show_error(self, message):
-        """
-        Mostra uma mensagem de erro em uma nova janela.
-        """
-        try:
-            logging.error(message)
-            error_window = customtkinter.CTkToplevel(self.root)
-            error_window.title("Error")
-            error_window.geometry((f"{width}x{height}"))
-            error_window.attributes('-topmost', True)
-            error_label = customtkinter.CTkLabel(error_window, text=message, text_color="red")
-            error_label.pack(pady=20)
-            error_button = customtkinter.CTkButton(error_window, text="OK", command=error_window.destroy)
-            error_button.pack(pady=10)
-            self.root.update_idletasks()
-        except Exception as e:
-            logging.error(f"Erro ao mostrar a mensagem de erro: {e}")
 
     def open_link(self, url="https://www.google.com"):
         """
