@@ -34,7 +34,7 @@ os.makedirs(log_dir, exist_ok=True)
 
 # Configura o logger
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.ERROR,
     format='%(asctime)s - [%(levelname)s] %(filename)s:%(lineno)d (%(name)s/%(funcName)s) --> %(message)s',
     datefmt='%Y-%m-%d @ %H:%M:%S',
     handlers=[
@@ -66,7 +66,7 @@ class AlwaysOnTopApp:
             logging.error(message)
             error_window = customtkinter.CTkToplevel(self.root)
             error_window.title("Error")
-            error_window.geometry((f"{width}x{height}"))
+            error_window.geometry((f"{defaultWidth}x{defaultHeight}"))
             error_window.attributes('-topmost', True)
             error_label = customtkinter.CTkLabel(error_window, text=message, text_color="red")
             error_label.pack(pady=20)
@@ -300,18 +300,31 @@ class AlwaysOnTopApp:
 
     def criar_interface_escolha_tema(self):
         """
-        Constrói a interface para escolha de tema.
+        Constrói a interface para escolha de tema e mantém a janela ancorada à janela principal.
         """
         try:
             logging.info("Construindo interface de escolha de tema...")
-            escolha_tema_main_window = customtkinter.CTkToplevel(self.root)
-            escolha_tema_main_window.overrideredirect(True)
-            escolha_tema_frame = customtkinter.CTkFrame(escolha_tema_main_window)
+
+            # Verifica se a janela já existe e está aberta
+            if hasattr(self, 'escolha_tema_main_window') and self.escolha_tema_main_window.winfo_exists():
+                logging.warning("A janela de escolha de tema já está aberta.")
+                return
+
+            # Criação da nova janela
+            self.escolha_tema_main_window = customtkinter.CTkToplevel(self.root)
+            self.escolha_tema_main_window.overrideredirect(True)
+            self.escolha_tema_main_window.title("Escolha de Tema")
+
+            # Frame para os elementos da interface
+            escolha_tema_frame = customtkinter.CTkFrame(self.escolha_tema_main_window)
             escolha_tema_frame.pack(fill="both", expand=True, padx=1, pady=1)
+
+            # Adiciona widgets na janela de escolha de temas
             temas_padroes_label = customtkinter.CTkLabel(
-                    escolha_tema_frame, text="Temas Padrões:", font=("Arial", 12)
-                )
+                escolha_tema_frame, text="Temas Padrões:", font=("Arial", 12)
+            )
             temas_padroes_label.pack(pady=(5, 0))
+
             # Botão de Tema Padrão
             bt_tema_padrao = customtkinter.CTkButton(
                 escolha_tema_frame,
@@ -320,7 +333,7 @@ class AlwaysOnTopApp:
             )
             bt_tema_padrao.pack(pady=(10, 10), padx=(10, 10))
 
-            # Botões de Temas Padrão
+            # Botões de escolha de temas padrões
             temas_padroes = ["Blue", "Dark-Blue", "Green"]
             for tema_padrao in temas_padroes:
                 bt_temas_padrao = customtkinter.CTkButton(
@@ -330,7 +343,7 @@ class AlwaysOnTopApp:
                 )
                 bt_temas_padrao.pack(pady=(0, 5))
 
-            # Botões de Temas Personalizados
+            # Verifica e adiciona temas personalizados, se disponíveis
             temas_disponiveis = self.get_available_themes()
             if temas_disponiveis:
                 temas_personalizados_label = customtkinter.CTkLabel(
@@ -351,19 +364,54 @@ class AlwaysOnTopApp:
                 )
                 no_themes_label.pack(pady=(15, 5))
 
-            # Botão para sair
+            # Botão para fechar a janela
             botao_sair_tema = customtkinter.CTkButton(
                 escolha_tema_frame,
-                text="Ok",
-                command=escolha_tema_main_window.destroy
+                text="Fechar",
+                command=self.fechar_escolha_tema
             )
             botao_sair_tema.pack(pady=(20, 10))
 
-            self.reset_input_placeholder("")
+            # Inicia o processo de ancoragem
+            self.ancorar_janela_tema()
+            
+            self.reset_input_placeholder()
 
-            escolha_tema_main_window.title("Escolha de Tema")
         except Exception as e:
             self.show_error(f"Erro ao construir a interface de escolha de tema: {e}")
+
+
+
+    def ancorar_janela_tema(self):
+        """
+        Mantém a janela de escolha de temas ancorada à janela principal.
+        """
+        try:
+            # Verifica se a janela de escolha de temas ainda existe
+            if hasattr(self, 'escolha_tema_main_window') and self.escolha_tema_main_window.winfo_exists():
+                # Obtém a posição da janela principal
+                x = self.root.winfo_x() - self.root.winfo_width() + 75 # Deslocamento horizontal
+                y = self.root.winfo_y()  # Mesma posição vertical
+                self.escolha_tema_main_window.geometry(f"+{x}+{y}")
+
+                # Continua atualizando
+                self.root.after(100, self.ancorar_janela_tema)
+        except Exception as e:
+            self.show_error(f"Erro ao ancorar janela de escolha de temas: {e}")
+
+            
+    def fechar_escolha_tema(self):
+        """
+        Fecha a janela de escolha de tema.
+        """
+        try:
+            if hasattr(self, 'escolha_tema_main_window') and self.escolha_tema_main_window.winfo_exists():
+                self.escolha_tema_main_window.destroy()
+                del self.escolha_tema_main_window
+        except Exception as e:
+            self.show_error(f"Erro ao fechar a janela de escolha de temas: {e}")
+
+
 
     def get_tema_atual(self):
         """
@@ -613,7 +661,6 @@ class AlwaysOnTopApp:
             self.tooltip.geometry(f"+0+0")
             label = customtkinter.CTkLabel(self.tooltip, text=text, justify='left')
             label.pack(ipadx=1)
-            self.entry.bind("<Key>", self.hide_tooltip, add="+")
         except Exception as e:
             self.show_error(f"Erro ao mostrar tooltip: {e}")
 
