@@ -3,13 +3,23 @@ import logging  # Importa a biblioteca logging para logs apropriados
 import threading  # Importa a biblioteca threading para trabalhar com threads
 import webbrowser  # Importa a biblioteca webbrowser para abrir links no navegador
 import sys # Importa a biblioteca sys para obter informações sobre o sistema
+import configparser # Importa a biblioteca configparser para criar, ler e modificar arquivos INI
 
 import tkinter  # Importa a biblioteca tkinter para criar interfaces gráficas
 import customtkinter  # Importa a biblioteca customtkinter para widgets personalizados
-from customtkinter.windows.ctk_toplevel import ThemeManager  # Importado para gerenciar temas de cores
+from customtkinter.windows.ctk_toplevel import ThemeManager as CTkThemeManager # Importado para gerenciar temas de cores
 import keyboard  # Importa a biblioteca keyboard para capturar eventos de teclado
 import pystray  # Importa a biblioteca pystray para criar ícones na bandeja do sistema
 from PIL import Image, ImageDraw  # Importa a biblioteca PIL para manipulação de imagens
+# from ahk import AHK # Importa a biblioteca de funcionalidades AHK, permitindo execução daa mesmas utilizando Python
+# from ahk.directives import NoTrayIcon
+
+# Parametrização e criação do objeto AHK:
+# directives = [NoTrayIcon(apply_to_hotkeys_process=True)]
+
+# ahk = AHK(directives=directives)
+
+
 
 # Obtém o diretório do script atual ou o diretório temporário do PyInstaller
 if getattr(sys, 'frozen', False):
@@ -34,7 +44,7 @@ os.makedirs(log_dir, exist_ok=True)
 
 # Configura o logger
 logging.basicConfig(
-    level=logging.ERROR,
+    level=logging.DEBUG,
     format='%(asctime)s - [%(levelname)s] %(filename)s:%(lineno)d (%(name)s/%(funcName)s) --> %(message)s',
     datefmt='%Y-%m-%d @ %H:%M:%S',
     handlers=[
@@ -58,6 +68,38 @@ class AlwaysOnTopApp:
     """
     Classe para criar uma aplicação que permanece sempre no topo.
     """
+    def __init__(self):
+        """
+        Inicializa a aplicação, configurando a janela principal e a interface.
+        """
+        try:
+            logging.info("Inicializando a aplicação...")
+            self.root = customtkinter.CTk()
+            self.root.geometry(defaultGeometry)
+            self.root.title("Launcher")
+            self.root.attributes('-topmost', True)
+            self.root.overrideredirect(True)
+            self.root.iconphoto(False, tkinter.PhotoImage(file=icon_path))
+            self.center_window()
+            self.root.protocol("WM_DELETE_WINDOW", self.hide_window)
+
+            self.theme_manager = ThemeManager()
+            self.command_handler = CommandHandler(self.root)
+            self.trayicon_manager = TrayIconManager()
+
+            self.setup_interface()
+
+            self.visible = True
+            logging.debug(f"Estado inicial de visible: {self.visible}")
+
+            self.commands = {
+                "dir": self.command_handler.open_script_dir
+            }
+            logging.debug(f"Estado inicial de hideWindowAfterCommand: {self.hideWindowAfterCommand}")
+            self.entry_count = 0  # Initialize entry count
+        except Exception as e:
+            logging.error(f"Erro ao inicializar a aplicação: {e}")
+
     def show_error(self, message):
         """
         Mostra uma mensagem de erro em uma nova janela.
@@ -75,34 +117,6 @@ class AlwaysOnTopApp:
             self.root.update_idletasks()
         except Exception as e:
             logging.error(f"Erro ao mostrar a mensagem de erro: {e}")
-    def __init__(self):
-        """
-        Inicializa a aplicação, configurando a janela principal e a interface.
-        """
-        try:
-            logging.info("Inicializando a aplicação...")
-            self.root = customtkinter.CTk()
-            self.root.geometry(defaultGeometry)
-            self.root.title("Launcher")
-            self.root.attributes('-topmost', True)
-            self.root.overrideredirect(True)
-            self.root.iconphoto(False, tkinter.PhotoImage(file=icon_path))
-            self.center_window()
-            self.root.protocol("WM_DELETE_WINDOW", self.hide_window)
-
-            self.setup_interface()
-
-            self.visible = True
-            logging.debug(f"Estado inicial de visible: {self.visible}")
-
-            self.commands = {
-                "dir": self.open_script_dir
-            }
-            self.hideWindowAfterCommand = True
-            logging.debug(f"Estado inicial de hideWindowAfterCommand: {self.hideWindowAfterCommand}")
-            self.entry_count = 0  # Initialize entry count
-        except Exception as e:
-            self.show_error(f"Erro ao inicializar a aplicação: {e}")
 
     def center_window(self):
         """
@@ -117,7 +131,7 @@ class AlwaysOnTopApp:
             y = (self.root.winfo_screenheight() // 2) - (height // 2)
             self.root.geometry(f"{width}x{height}+{x}+{y}")
         except Exception as e:
-            self.show_error(f"Erro ao centralizar a janela: {e}")
+            logging.error(f"Erro ao centralizar a janela: {e}")
 
     def setup_interface(self):
         """
@@ -128,10 +142,10 @@ class AlwaysOnTopApp:
             for widget in self.root.winfo_children():
                 widget.destroy()
 
-            self.background_frame = customtkinter.CTkFrame(self.root)#, bg="#646464")
+            self.background_frame = customtkinter.CTkFrame(self.root)
             self.background_frame.pack(fill="both", expand=True, padx=1, pady=1)
 
-            self.content_frame = customtkinter.CTkFrame(self.background_frame)#, bg="#1d1f21")
+            self.content_frame = customtkinter.CTkFrame(self.background_frame)
             self.content_frame.pack(fill="both", expand=True, padx=0, pady=0)
 
             self.content_frame.columnconfigure(0, weight=1)
@@ -146,7 +160,7 @@ class AlwaysOnTopApp:
             #if 
             self.label.grid(row=0, column=0, pady=(10, 5), sticky="ew")
 
-            self.entry_frame = customtkinter.CTkFrame(self.content_frame, height=defaultHeight)#, bg="#1d1f21")
+            self.entry_frame = customtkinter.CTkFrame(self.content_frame, height=defaultHeight)
             self.entry_frame.grid(row=1, column=0, padx=10, pady=(5, 10), sticky="nsew")
             self.entry_frame.columnconfigure(0, weight=1)
 
@@ -155,14 +169,14 @@ class AlwaysOnTopApp:
             )
             self.entry.grid(row=0, column=0, sticky="nsew")
             self.entry.bind("<Return>", self.check_exit)
-            self.entry.focus_set()
+            self.entry.focus_force()
 
             self.entry_count = 0  # Initialize/Reset entry count
 
             self.root.update_idletasks()
             self.root.geometry(f"{defaultWidth}x{defaultHeight}")
         except Exception as e:
-            self.show_error(f"Erro ao configurar a interface: {e}")
+            logging.error(f"Erro ao configurar a interface: {e}")
 
     def toggle_window(self):
         """
@@ -176,7 +190,7 @@ class AlwaysOnTopApp:
                 self.show_window()
             logging.debug(f"Estado de visible alternado: {self.visible}")
         except Exception as e:
-            self.show_error(f"Erro ao alternar a visibilidade da janela: {e}")
+            logging.error(f"Erro ao alternar a visibilidade da janela: {e}")
 
     def show_window(self):
         """
@@ -190,7 +204,7 @@ class AlwaysOnTopApp:
             logging.debug(f"Mostrar janela, estado de visible: {self.visible}")
             self.entry.focus_force()
         except Exception as e:
-            self.show_error(f"Erro ao mostrar a janela: {e}")
+            logging.error(f"Erro ao mostrar a janela: {e}")
 
     def hide_window(self):
         """
@@ -202,101 +216,142 @@ class AlwaysOnTopApp:
             self.visible = False
             logging.debug(f"Esconder janela, estado de visible: {self.visible}")
         except Exception as e:
-            self.show_error(f"Erro ao esconder a janela: {e}")
+            logging.error(f"Erro ao esconder a janela: {e}")
 
     def check_exit(self, event):
         """
         Verifica o comando de saída e executa a ação correspondente.
         """
         try:
+            global command
             command = self.entry.get().strip().lower()
             logging.debug(f"Comando recebido: {command}")
             if command == "exit":
                 self.cleanup()
             elif command == "?":
-                self.show_commands_tooltip_handler()
+                self.command_handler.show_commands_tooltip_handler()
                 self.entry.delete(0, 'end')
                 self.reset_input_placeholder("Digite o comando...", color="lime")
             else:
-                if self.execute_command(command):
+                if self.command_handler.execute_command(command):
                     self.entry.delete(0, 'end')
                     self.entry.configure(placeholder_text="Digite o comando...")
                     logging.debug(f"hideWindowAfterCommand em check_exit: {self.hideWindowAfterCommand}")
                     if self.hideWindowAfterCommand:
                         self.hide_window()
-                    self.hideWindowAfterCommand = True
+                    #self.hideWindowAfterCommand = True
         except Exception as e:
-            self.show_error(f"Erro ao verificar o comando de saída: {e}")
+            logging.error(f"Erro ao verificar o comando de saída: {e}")
 
-    def open_link_with_value(self, base_url, value):
+    def create_config(self, file_path="config.ini"):  # create_config('config.ini')
         """
-        Abre um link no navegador substituindo um valor na URL base.
+        Cria um arquivo de configuração INI com as configurações padrão.
+        """
+        config = configparser.ConfigParser()
+
+        # Adiciona a seção e configurações
+        config['database'] = {
+            'host': 'localhost',
+            'port': '5432',
+            'username': 'postgres',
+            'password': 'postgres'
+        }
+
+        # Salva no arquivo INI
+        with open(file_path, 'w') as configfile:
+            config.write(configfile)
+        logging.info(f"Configuração salva em {file_path}")
+
+    def read_config(self, file_path): # read_config('config.ini')
+        """
+        Lê um arquivo de configuração INI e retorna as configurações.
+        """
+        config = configparser.ConfigParser()
+        config.read(file_path)
+
+        # Lendo as configurações
+        db_config = config['database']
+        logging.debug(f"Host: {db_config['host']}")
+        logging.debug(f"Port: {db_config['port']}")
+        logging.debug(f"Username: {db_config['username']}")
+        logging.debug(f"Password: {db_config['password']}")
+        return db_config
+
+    def update_config(self, file_path, section, key, value):  # update_config('config.ini', 'database', 'password', 'new_secret')
+        """
+        Atualiza um valor em um arquivo de configuração INI.
+        """
+        config = configparser.ConfigParser()
+        config.read(file_path)
+
+        # Atualiza o valor
+        if section in config:
+            config[section][key] = value
+            with open(file_path, 'w') as configfile:
+                config.write(configfile)
+            logging.debug(f"Configuração atualizada: [{section}] {key} = {value}")
+        else:
+            logging.error(f"Seção {section} não encontrada.")
+
+    def reset_input_placeholder(self, message="", color=None):
+        """
+        Reseta o placeholder do campo de entrada com uma mensagem.
         """
         try:
-            logging.info(f"Abrindo link com valor: {value}")
-            url = base_url.replace("REPLACEME", value)
-            webbrowser.open(url)
-        except Exception as e:
-            self.show_error(f"Erro ao abrir o link: {e}")
-
-    def execute_command(self, command):
-        """
-        Executa o comando especificado.
-        """
-        try:
-            logging.debug(f"Estado inicial de hideWindowAfterCommand: {self.hideWindowAfterCommand}")
-
-            if command in self.commands:
-                logging.info(f"Executando comando interno: {command}")
-                self.commands[command]()
-                self.hideWindowAfterCommand = True
-                logging.debug(f"Definir estado de hideWindowAfterCommand: {self.hideWindowAfterCommand}")
-                return True
-            elif command == "in":
-                logging.info("Criando nova entrada para comando 'in'")
-                self.create_new_entry(
-                    "CNPJ",
-                    "cyan",
-                    lambda value: self.open_link_with_value_and_reset(
-                        "https://intranet.lzt.com.br/cliente/pesquisar/REPLACEME",
-                        value
-                    )
-                )
-            elif command in {"tema", "temas", "theme", "themes"}:
-                self.criar_interface_escolha_tema()
-                
-                self.adjust_window_size()
-                self.hideWindowAfterCommand = False
-                logging.debug(f"Definir estado de hideWindowAfterCommand: {self.hideWindowAfterCommand}")
-                self.root.update_idletasks()
-                return True
+            logging.debug(f"Resetando placeholder do campo de entrada: {message}")
+            self.entry.delete(0, 'end')
+            if color in {""," ","reset",None}: 
+                self.entry.configure(placeholder_text=message)
             else:
-                accepted_extensions = ["py", "txt"]
-                command_file = None
-                for ext in accepted_extensions:
-                    potential_file = os.path.join(commands_dir, f"{command}.{ext}")
-                    logging.debug(f"Verificando arquivo: {potential_file}")
-                    if os.path.isfile(potential_file):
-                        command_file = potential_file
-                        break
-
-                if command_file:
-                    try:
-                        logging.debug(f"Executando arquivo de comando: {command_file}")
-                        with open(command_file, "r", encoding="utf-8") as file:
-                            exec(file.read().encode().decode('utf-8'))
-                        logging.debug(f"hideWindowAfterCommand após exec: {self.hideWindowAfterCommand}")
-                        self.setup_interface()
-                        return True
-                    except Exception as e:
-                        self.show_error(f"Erro ao executar comando '{command}': {e}")
-                        return False
-                else:
-                    self.reset_input_placeholder(f"Comando '{command}' não encontrado", "red")
-                    return False
+                self.entry.configure(placeholder_text=message, placeholder_text_color=color)
+            self.entry.bind("<Key>", self.reset_input_handler, add="+")
         except Exception as e:
-            self.show_error(f"Erro ao executar o comando: {e}")
-            return False
+            logging.error(f"Erro ao resetar o placeholder: {e}")
+
+    def reset_input_handler(self, event):
+        """
+        Manipulador para resetar o campo de entrada.
+        """
+        try:
+            logging.debug("Resetando campo de entrada...")
+            self.setup_interface()
+            self.entry.insert(0, event.char)
+        except Exception as e:
+            logging.error(f"Erro ao resetar o campo de entrada: {e}")
+
+    def adjust_window_size(self):
+        """
+        Ajusta o tamanho da janela para garantir que todos os campos estejam visíveis.
+        """
+        try:
+            logging.debug("Ajustando tamanho da janela...")
+            self.root.update_idletasks()
+            width = defaultWidth
+            height = defaultHeight + (self.entry_count * 70)  # Adjust height based on entry count
+            self.root.geometry(f"{width}x{height}")
+        except Exception as e:
+            logging.error(f"Erro ao ajustar o tamanho da janela: {e}")
+
+    def cleanup(self):
+        """
+        Limpa e encerra a aplicação.
+        """
+        try:
+            logging.info("Limpando e encerrando a aplicação...")
+            self.root.destroy()
+            icon.visible = False
+            icon.stop()
+            logging.debug(f"Limpeza da aplicação, estado de visible: {self.visible}")
+        except Exception as e:
+            logging.error(f"Erro ao limpar a aplicação: {e}")
+
+class ThemeManager:
+    """
+    Gerencia a aplicação de temas de cores à interface gráfica.
+    """
+    def __init__(self):
+        logging.debug("Initializing Theme Manager...")
+        self.escolha_tema_main_window = None  # Initialize the window attribute
 
     def criar_interface_escolha_tema(self):
         """
@@ -306,12 +361,12 @@ class AlwaysOnTopApp:
             logging.info("Construindo interface de escolha de tema...")
 
             # Verifica se a janela já existe e está aberta
-            if hasattr(self, 'escolha_tema_main_window') and self.escolha_tema_main_window.winfo_exists():
+            if self.escolha_tema_main_window and app.theme_manager.escolha_tema_main_window.winfo_exists():
                 logging.warning("A janela de escolha de tema já está aberta.")
                 return
 
             # Criação da nova janela
-            self.escolha_tema_main_window = customtkinter.CTkToplevel(self.root)
+            self.escolha_tema_main_window = customtkinter.CTkToplevel(app.root)
             self.escolha_tema_main_window.overrideredirect(True)
             self.escolha_tema_main_window.title("Escolha de Tema")
 
@@ -329,7 +384,7 @@ class AlwaysOnTopApp:
             bt_tema_padrao = customtkinter.CTkButton(
                 escolha_tema_frame,
                 text="Padrão",
-                command=lambda: self.aplicar_novo_tema("theme")
+                command=lambda: app.theme_manager.aplicar_novo_tema("theme")
             )
             bt_tema_padrao.pack(pady=(10, 10), padx=(10, 10))
 
@@ -339,12 +394,12 @@ class AlwaysOnTopApp:
                 bt_temas_padrao = customtkinter.CTkButton(
                     escolha_tema_frame,
                     text=tema_padrao,
-                    command=lambda t=tema_padrao: self.aplicar_novo_tema(t.lower())
+                    command=lambda t=tema_padrao: app.theme_manager.aplicar_novo_tema(t.lower())
                 )
                 bt_temas_padrao.pack(pady=(0, 5))
 
             # Verifica e adiciona temas personalizados, se disponíveis
-            temas_disponiveis = self.get_available_themes()
+            temas_disponiveis = app.command_handler.get_available_themes()
             if temas_disponiveis:
                 temas_personalizados_label = customtkinter.CTkLabel(
                     escolha_tema_frame, text="Temas Personalizados:", font=("Arial", 12)
@@ -355,7 +410,7 @@ class AlwaysOnTopApp:
                     theme_button = customtkinter.CTkButton(
                         escolha_tema_frame,
                         text=theme.title(),
-                        command=lambda t=theme: self.aplicar_novo_tema(t)
+                        command=lambda t=theme: app.theme_manager.aplicar_novo_tema(t)
                     )
                     theme_button.pack(pady=(0, 5))
             else:
@@ -375,12 +430,10 @@ class AlwaysOnTopApp:
             # Inicia o processo de ancoragem
             self.ancorar_janela_tema()
             
-            self.reset_input_placeholder()
+            app.reset_input_placeholder("Digite o comando...")
 
         except Exception as e:
-            self.show_error(f"Erro ao construir a interface de escolha de tema: {e}")
-
-
+            logging.error(f"Erro ao construir a interface de escolha de tema: {e}")
 
     def ancorar_janela_tema(self):
         """
@@ -388,55 +441,35 @@ class AlwaysOnTopApp:
         """
         try:
             # Verifica se a janela de escolha de temas ainda existe
-            if hasattr(self, 'escolha_tema_main_window') and self.escolha_tema_main_window.winfo_exists():
+            if self.escolha_tema_main_window and self.escolha_tema_main_window.winfo_exists():
                 # Obtém a posição da janela principal
-                x = self.root.winfo_x() - self.root.winfo_width() + 75 # Deslocamento horizontal
-                y = self.root.winfo_y()  # Mesma posição vertical
+                x = app.root.winfo_x() - app.root.winfo_width() + 75 # Deslocamento horizontal
+                y = app.root.winfo_y()  # Mesma posição vertical
                 self.escolha_tema_main_window.geometry(f"+{x}+{y}")
 
                 # Continua atualizando
-                self.root.after(100, self.ancorar_janela_tema)
+                app.root.after(100, self.ancorar_janela_tema)
         except Exception as e:
-            self.show_error(f"Erro ao ancorar janela de escolha de temas: {e}")
+            logging.error(f"Erro ao ancorar janela de escolha de temas: {e}")
 
-            
     def fechar_escolha_tema(self):
         """
         Fecha a janela de escolha de tema.
         """
         try:
-            if hasattr(self, 'escolha_tema_main_window') and self.escolha_tema_main_window.winfo_exists():
+            if app.theme_manager.escolha_tema_main_window and app.theme_manager.escolha_tema_main_window.winfo_exists():
                 self.escolha_tema_main_window.destroy()
-                del self.escolha_tema_main_window
+                self.escolha_tema_main_window = None
         except Exception as e:
-            self.show_error(f"Erro ao fechar a janela de escolha de temas: {e}")
-
-
+            logging.error(f"Erro ao fechar a janela de escolha de temas: {e}")
 
     def get_tema_atual(self):
         """
         Retorna o valor do tema atual.
         """
-        tema_atual = ThemeManager._currently_loaded_theme
-        return tema_atual            
+        tema_atual = CTkThemeManager._currently_loaded_theme
+        return tema_atual
             
-    def get_available_themes(self):
-        """
-        Retorna a lista de temas disponíveis.
-        """
-        try:
-            logging.debug("Obtendo temas disponíveis...")
-            themes = []
-            for file in os.listdir(theme_dir):
-                if file.endswith(".json"):
-                    themes.append(file.split('.')[0])
-                    
-            return themes
-        except Exception as e:
-            logging.error(f"Erro ao obter temas disponíveis: {e}")
-            self.show_error(f"Erro ao obter temas disponíveis: {e}")
-            return []
-
     def aplicar_novo_tema(self, tema):
         """
         Aplica um novo tema à aplicação.
@@ -452,43 +485,26 @@ class AlwaysOnTopApp:
             else:
                 customtkinter.set_default_color_theme(f"{theme_dir}/{tema}.json")
                 
-            self.root.update_idletasks()
+            app.root.update_idletasks()
             
-            self.setup_interface()
+            app.setup_interface()
             self.criar_interface_escolha_tema()
 
-            logging.debug(f"Tema atual: {ThemeManager._currently_loaded_theme}")
+            logging.debug(f"Tema atual: {CTkThemeManager._currently_loaded_theme}")
         except Exception as e:
-            self.show_error(f"Erro ao aplicar o novo tema: {e}")
+            logging.error(f"Erro ao aplicar o novo tema: {e}")
 
-    def reset_input_placeholder(self, message="", color=None):
-        """
-        Reseta o placeholder do campo de entrada com uma mensagem.
-        """
-        try:
-            logging.debug(f"Resetando placeholder do campo de entrada: {message}")
-            self.entry.delete(0, 'end')
-            if color in {""," ","reset",None}: 
-                self.entry.configure(placeholder_text=message)
-            else:
-                self.entry.configure(placeholder_text=message, placeholder_text_color=color)
-            self.entry.bind("<Key>", self.reset_input_handler, add="+")
-        except Exception as e:
-            self.show_error(f"Erro ao resetar o placeholder: {e}")
+class CommandHandler:
+    """
+    Classe para lidar com comandos e execução de scripts.
+    """
+    def __init__(self, root):
+        self.root = root
+        logging.info("Initializing Command Handler...")
+        self.hideWindowAfterCommand = False  # Add this line
 
-    def reset_input_handler(self, event):
-        """
-        Manipulador para resetar o campo de entrada.
-        """
-        try:
-            logging.debug("Resetando campo de entrada...")
-            self.setup_interface()
-            self.entry.insert(0, event.char)
-        except Exception as e:
-            self.show_error(f"Erro ao resetar o campo de entrada: {e}")
-
-
-
+    
+    
     def open_link(self, url="https://www.google.com"):
         """
         Abre o link especificado no navegador padrão.
@@ -497,7 +513,18 @@ class AlwaysOnTopApp:
             logging.info(f"Abrindo link: {url}")
             webbrowser.open(url)
         except Exception as e:
-            self.show_error(f"Erro ao abrir o link: {e}")
+            logging.error(f"Erro ao abrir o link: {e}")
+
+    def open_link_with_value(self, base_url, value):
+        """
+        Abre um link no navegador substituindo um valor na URL base.
+        """
+        try:
+            logging.info(f"Abrindo link com valor: {value}")
+            url = base_url.replace("REPLACEME", value)
+            webbrowser.open(url)
+        except Exception as e:
+            logging.error(f"Erro ao abrir o link: {e}")
 
     def open_link_with_value_and_reset(self, base_url, value):
         """
@@ -506,14 +533,14 @@ class AlwaysOnTopApp:
         try:
             logging.info(f"Abrindo link com valor e resetando: {value}")
             self.open_link_with_value(base_url, value)
-            self.setup_interface()
-            self.root.geometry(defaultGeometry)
-            self.center_window()
+            app.setup_interface()
+            app.root.geometry(defaultGeometry)
+            app.center_window()
             if self.hideWindowAfterCommand:
-                self.hide_window()
+                app.hide_window()
             logging.debug(f"hideWindowAfterCommand em open_link_with_value_and_reset: {self.hideWindowAfterCommand}")
         except Exception as e:
-            self.show_error(f"Erro ao abrir o link e resetar a interface: {e}")
+            logging.error(f"Erro ao abrir o link e resetar a interface: {e}")
 
     def open_file(self, file_path=script_dir):
         """
@@ -523,75 +550,7 @@ class AlwaysOnTopApp:
             logging.info(f"Abrindo arquivo: {file_path}")
             os.startfile(file_path)
         except Exception as e:
-            self.show_error(f"Erro ao abrir o arquivo: {e}")
-
-    def create_new_entry(self, labelText, labelColor="white", command=None):
-        """
-        Cria uma nova entrada com um rótulo especificado.
-        """
-        try:
-            logging.info(f"Criando nova entrada: {labelText}")
-            # Create a new label for the entry
-            new_label = customtkinter.CTkLabel(
-                self.entry_frame, text=labelText, font=("Arial", 16), text_color=labelColor
-            )
-            new_label.grid(row=self.entry_count * 2 + 1, column=0, pady=(10, 5), sticky="ew")
-
-            # Create a new entry field
-            new_entry = customtkinter.CTkEntry(
-                self.entry_frame,
-                placeholder_text="Digite o valor...",
-                fg_color="#282a2e"
-            )
-            if command:
-                new_entry.bind("<Return>", lambda Event: command(new_entry.get().strip()))
-            else:
-                new_entry.bind("<Return>", self.check_exit)
-            new_entry.grid(row=self.entry_count * 2 + 2, column=0, padx=10, pady=(5, 10), sticky="ew")
-
-            self.entry_count += 1  # Increment entry count
-            self.adjust_window_size()
-            self.entry_frame.rowconfigure(self.entry_count * 2 + 2, weight=1)  # Ensure new row is configured
-            self.root.update_idletasks()
-            new_entry.focus_force()
-        except Exception as e:
-            self.show_error(f"Erro ao criar nova entrada: {e}")
-
-    def adjust_window_size(self):
-        """
-        Ajusta o tamanho da janela para garantir que todos os campos estejam visíveis.
-        """
-        try:
-            logging.debug("Ajustando tamanho da janela...")
-            self.root.update_idletasks()
-            width = defaultWidth
-            height = defaultHeight + (self.entry_count * 70)  # Adjust height based on entry count
-            self.root.geometry(f"{width}x{height}")
-        except Exception as e:
-            self.show_error(f"Erro ao ajustar o tamanho da janela: {e}")
-
-    def open_script_dir(self):
-        """
-        Abre o diretório do script.
-        """
-        try:
-            logging.info("Abrindo diretório do script...")
-            os.startfile(script_dir)
-        except Exception as e:
-            self.show_error(f"Erro ao abrir o diretório do script: {e}")
-
-    def cleanup(self):
-        """
-        Limpa e encerra a aplicação.
-        """
-        try:
-            logging.info("Limpando e encerrando a aplicação...")
-            self.root.destroy()
-            icon.visible = False
-            icon.stop()
-            logging.debug(f"Limpeza da aplicação, estado de visible: {self.visible}")
-        except Exception as e:
-            logging.error(f"Erro ao limpar a aplicação: {e}")
+            logging.error(f"Erro ao abrir o arquivo: {e}")
 
     def list_commands(self):
         """
@@ -607,7 +566,7 @@ class AlwaysOnTopApp:
                     commands_list.append(f"{command_name} - {docstring}")
             return commands_list
         except Exception as e:
-            self.show_error(f"Erro ao listar comandos: {e}")
+            logging.error(f"Erro ao listar comandos: {e}")
             return []
 
     def get_command_docstring(self, file_path):
@@ -633,7 +592,7 @@ class AlwaysOnTopApp:
                 return docstring if docstring else "[Sem descrição]"
         except Exception as e:
             logging.error(f"Erro ao obter a docstring dos comandos: {e}")
-            self.show_error(f"Erro ao obter a docstring: {e}")
+            logging.error(f"Erro ao obter a docstring: {e}")
             return "Erro ao obter descrição"
 
     def show_commands_tooltip_handler(self):
@@ -645,10 +604,10 @@ class AlwaysOnTopApp:
             commands = self.list_commands()
             tooltip_text = "Comandos disponíveis:\n\n" + "\n".join(commands)
             self.show_windows_tooltip(tooltip_text)
-            self.entry.bind("<Key>", self.hide_tooltip, add="+")
+            app.entry.bind("<Key>", self.hide_tooltip, add="+")
             logging.debug(f"Estado de visibilidade do tooltip: {hasattr(self, 'tooltip')}")
         except Exception as e:
-            self.show_error(f"Erro ao mostrar comandos: {e}")
+            logging.error(f"Erro ao mostrar comandos: {e}")
 
     def show_windows_tooltip(self, text):
         """
@@ -662,7 +621,7 @@ class AlwaysOnTopApp:
             label = customtkinter.CTkLabel(self.tooltip, text=text, justify='left')
             label.pack(ipadx=1)
         except Exception as e:
-            self.show_error(f"Erro ao mostrar tooltip: {e}")
+            logging.error(f"Erro ao mostrar tooltip: {e}")
 
     def hide_tooltip(self, event):
         """
@@ -675,53 +634,176 @@ class AlwaysOnTopApp:
                 del self.tooltip
             logging.debug(f"Estado de visibilidade do tooltip: {hasattr(self, 'tooltip')}")
         except Exception as e:
-            self.show_error(f"Erro ao esconder tooltip: {e}")
+            logging.error(f"Erro ao esconder tooltip: {e}")
 
-def create_image(width, height, color1, color2):
-    """
-    Cria uma imagem para o ícone da bandeja do sistema. (fallback)
-    """
-    try:
-        logging.info("Criando imagem para ícone da bandeja...")
-        image = Image.new('RGB', (width, height), color1)
-        dc = ImageDraw.Draw(image)
-        dc.rectangle(
-            (width // 4, height // 4, width * 3 // 4, height * 3 // 4),
-            fill=color2
-        )
-        return image
-    except Exception as e:
-        logging.error(f"Erro ao criar a imagem: {e}")
+    def execute_command(self, command):
+        """
+        Executa o comando especificado.
+        """
+        try:
+            logging.debug(f"Estado inicial de hideWindowAfterCommand: {self.hideWindowAfterCommand}")
 
-def on_exit():
-    """
-    Função chamada ao sair da aplicação.
-    """
-    try:
-        logging.info("Saindo da aplicação...")
-        if 'app' in globals():
-            app.cleanup()
-    except Exception as e:
-        logging.error(f"Erro ao sair da aplicação: {e}")
+            if command in app.commands:
+                logging.info(f"Executando comando: {command}")
+                app.commands[command]()
+                #self.hideWindowAfterCommand = True
+                logging.debug(f"Definir estado de hideWindowAfterCommand: {self.hideWindowAfterCommand}")
+                return True
+            elif command == "in":
+                logging.info("Criando nova entrada para comando 'in'")
+                self.create_new_entry(
+                    "CNPJ",
+                    "cyan",
+                    lambda value: self.open_link_with_value_and_reset(
+                        "https://intranet.lzt.com.br/cliente/pesquisar/REPLACEME",
+                        value
+                    )
+                )
+            elif command in {"tema", "temas", "theme", "themes"}:
+                self.hideWindowAfterCommand = False
+                app.theme_manager.criar_interface_escolha_tema()
+                
+                app.adjust_window_size()
+                self.hideWindowAfterCommand = False
+                logging.debug(f"Definir estado de hideWindowAfterCommand: {self.hideWindowAfterCommand}")
+                self.root.update_idletasks()
+                return True
+            else:
+                accepted_extensions = ["py", "txt"]
+                command_file = None
+                for ext in accepted_extensions:
+                    potential_file = os.path.join(commands_dir, f"{command}.{ext}")
+                    logging.debug(f"Verificando arquivo: {potential_file}")
+                    if os.path.isfile(potential_file):
+                        command_file = potential_file
+                        break
 
-def tray_thread():
-    """
-    Thread para criar o ícone da bandeja do sistema.
-    """
-    try:
-        logging.info("Iniciando thread da bandeja do sistema...")
-        global icon
-        icon_image = Image.open(tray_icon_path)
-        icon = pystray.Icon(
-            "App", 
-            icon_image, 
-            menu=pystray.Menu(
-                pystray.MenuItem("Exit", lambda: on_exit())
-            )   
-        )
-        icon.run()
-    except Exception as e:
-        logging.error(f"Erro ao iniciar a thread da bandeja: {e}")
+                if command_file:
+                    try:
+                        logging.debug(f"Executando arquivo de comando: {command_file}")
+                        with open(command_file, "r", encoding="utf-8") as file:
+                            exec(file.read().encode().decode('utf-8'))
+                        logging.debug(f"hideWindowAfterCommand após exec: {self.hideWindowAfterCommand}")
+                        app.setup_interface()
+                        return True
+                    except Exception as e:
+                        logging.error(f"Erro ao executar comando '{command}': {e}")
+                        return False
+                else:
+                    app.reset_input_placeholder(f"Comando '{command}' não encontrado", "red")
+                    return False
+        except Exception as e:
+            logging.error(f"Erro ao executar o comando: {e}")
+            return False
+
+    def open_script_dir(self):
+        """
+        Abre o diretório do script.
+        """
+        try:
+            logging.info("Abrindo diretório do script...")
+            os.startfile(script_dir)
+        except Exception as e:
+            logging.error(f"Erro ao abrir o diretório do script: {e}")
+
+    def create_new_entry(self, labelText, labelColor="white", command=None):
+        """
+        Cria uma nova entrada com um rótulo especificado.
+        """
+        try:
+            logging.info(f"Criando nova entrada: {labelText}")
+            # Create a new label for the entry
+            new_label = customtkinter.CTkLabel(
+                app.entry_frame, text=labelText, font=("Arial", 16), text_color=labelColor
+            )
+            new_label.grid(row=app.entry_count * 2 + 1, column=0, pady=(10, 5), sticky="ew")
+
+            # Create a new entry field
+            new_entry = customtkinter.CTkEntry(
+                app.entry_frame,
+                placeholder_text="Digite o valor...",
+                fg_color="#282a2e"
+            )
+            if command:
+                new_entry.bind("<Return>", lambda Event: command(new_entry.get().strip()))
+            else:
+                new_entry.bind("<Return>", app.check_exit)
+            new_entry.grid(row=app.entry_count * 2 + 2, column=0, padx=10, pady=(5, 10), sticky="ew")
+
+            app.entry_count += 1  # Increment entry count
+            app.adjust_window_size()
+            app.entry_frame.rowconfigure(app.entry_count * 2 + 2, weight=1)  # Ensure new row is configured
+            app.root.update_idletasks()
+            new_entry.focus_force()
+        except Exception as e:
+            logging.error(f"Erro ao criar nova entrada: {e}")
+
+    def get_available_themes(self):
+        """
+        Retorna a lista de temas disponíveis.
+        """
+        try:
+            logging.debug("Obtendo temas disponíveis...")
+            themes = []
+            for file in os.listdir(theme_dir):
+                if file.endswith(".json"):
+                    themes.append(file.split('.')[0])
+                    
+            return themes
+        except Exception as e:
+            logging.error(f"Erro ao obter temas disponíveis: {e}")
+            return []
+
+class TrayIconManager:
+    """Manages themes and UI customization."""
+    def __init__(self):
+        logging.info("Initializing Tray Icon Manager...")
+
+    def tray_thread(self):
+        """
+        Thread para criar o ícone da bandeja do sistema.
+        """
+        try:
+            logging.info("Iniciando thread da bandeja do sistema...")
+            global icon
+            icon_image = Image.open(tray_icon_path)
+            icon = pystray.Icon(
+                "App", 
+                icon_image, 
+                menu=pystray.Menu(
+                    pystray.MenuItem("Exit", lambda: on_exit())
+                )
+            )
+            icon.run()
+        except Exception as e:
+            logging.error(f"Erro ao iniciar a thread da bandeja: {e}")
+
+    def create_image(self, width, height, color1, color2):
+        """
+        Cria uma imagem para o ícone da bandeja do sistema. (fallback)
+        """
+        try:
+            logging.info("Criando imagem para ícone da bandeja...")
+            image = Image.new('RGB', (width, height), color1)
+            dc = ImageDraw.Draw(image)
+            dc.rectangle(
+                (width // 4, height // 4, width * 3 // 4, height * 3 // 4),
+                fill=color2
+            )
+            return image
+        except Exception as e:
+            logging.error(f"Erro ao criar a imagem: {e}")
+
+    def on_exit(self):
+        """
+        Função chamada ao sair da aplicação.
+        """
+        try:
+            logging.info("Saindo da aplicação...")
+            if 'app' in globals():
+                app.cleanup()
+        except Exception as e:
+            logging.error(f"Erro ao sair da aplicação: {e}")
 
 if __name__ == "__main__":
     # Inicializa a aplicação e configura o ícone da bandeja do sistema.
@@ -729,7 +811,7 @@ if __name__ == "__main__":
         logging.info("Iniciando a aplicação...")
         app = AlwaysOnTopApp()
 
-        tray = threading.Thread(target=tray_thread, daemon=True)
+        tray = threading.Thread(target=app.trayicon_manager.tray_thread, daemon=True)
         tray.start()
 
         keyboard.add_hotkey("ctrl+capslock", app.toggle_window)
